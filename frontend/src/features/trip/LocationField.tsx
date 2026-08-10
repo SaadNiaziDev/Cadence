@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Loader2, MapPin } from "lucide-react";
+import { MapPin, type LucideIcon } from "lucide-react";
 
 import { useSuggestions } from "@/api/trips";
 import { useDebounced } from "@/hooks/use-debounced";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 
 interface LocationFieldProps {
   id: string;
@@ -13,7 +14,7 @@ interface LocationFieldProps {
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
-  icon?: React.ReactNode;
+  icon?: LucideIcon;
   error?: string;
 }
 
@@ -63,51 +64,66 @@ export function LocationField({ id, label, placeholder, value, onChange, icon, e
   }
 
   const showMenu = isOpen && !justPicked && suggestions.length > 0;
+  const Icon = icon ?? MapPin;
 
   return (
-    <div className="space-y-1.5" ref={containerRef}>
-      <Label htmlFor={id} className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    // gap-1.5 rather than Field's default gap-3: the labels here are small uppercase
+    // captions, so at the stock gap an error message sits as far from the input it belongs
+    // to as from the next field's label, and the grouping stops reading.
+    <Field className="gap-1.5" data-invalid={error ? true : undefined}>
+      <FieldLabel htmlFor={id} className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
-      </Label>
+      </FieldLabel>
 
-      <div className="relative">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-          {icon ?? <MapPin className="size-4" aria-hidden />}
-        </span>
+      {/* The ref sits here rather than on Field because this element wraps both the control
+          and the menu — exactly the region a click has to land outside of to dismiss. */}
+      <div className="relative" ref={containerRef}>
+        {/* InputGroup owns the affordance slots either side of the control, so the icon and
+            the in-flight spinner sit in the border rather than being absolutely positioned
+            over a plain input. */}
+        <InputGroup className="h-11">
+          <InputGroupAddon align="inline-start">
+            <Icon aria-hidden />
+          </InputGroupAddon>
 
-        <Input
-          id={id}
-          value={value}
-          placeholder={placeholder}
-          autoComplete="off"
-          role="combobox"
-          aria-expanded={showMenu}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          aria-invalid={Boolean(error)}
-          className={cn("h-11 pl-9 pr-9", error && "border-destructive")}
-          onChange={(event) => {
-            onChange(event.target.value);
-            setJustPicked(false);
-            setIsOpen(true);
-            setActiveIndex(-1);
-          }}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={handleKeyDown}
-        />
+          <InputGroupInput
+            id={id}
+            value={value}
+            placeholder={placeholder}
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={showMenu}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-invalid={Boolean(error)}
+            onChange={(event) => {
+              onChange(event.target.value);
+              setJustPicked(false);
+              setIsOpen(true);
+              setActiveIndex(-1);
+            }}
+            onFocus={() => setIsOpen(true)}
+            onKeyDown={handleKeyDown}
+          />
 
-        {isFetching && (
-          <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-hidden />
-        )}
+          {isFetching && (
+            <InputGroupAddon align="inline-end">
+              <Spinner />
+            </InputGroupAddon>
+          )}
+        </InputGroup>
 
         {showMenu && (
           <ul
             id={listId}
             role="listbox"
-            className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-lg"
+            className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-lg"
           >
             {suggestions.map((suggestion, index) => (
               <li key={`${suggestion.label}-${suggestion.longitude}`}>
+                {/* An option must stay a single focusable control, so the row is composed of
+                    spans rather than Item — Item's title and description slots are block
+                    elements and cannot legally nest inside a button. */}
                 <button
                   type="button"
                   role="option"
@@ -133,7 +149,7 @@ export function LocationField({ id, label, placeholder, value, onChange, icon, e
         )}
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
+      <FieldError>{error}</FieldError>
+    </Field>
   );
 }

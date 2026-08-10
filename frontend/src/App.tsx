@@ -4,7 +4,10 @@ import { AlertTriangle, Clock, Info, Moon, Sun } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { usePlanTrip } from "@/api/trips";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClocksHud } from "@/features/hud/ClocksHud";
@@ -70,7 +73,7 @@ export default function App() {
       {/* The trip summary lives in the header rather than in its own row. The header had
           empty space to spare and the map did not, and these are read-once figures that
           do not need to sit beside the controls. */}
-      <header className="shrink-0 border-b border-border">
+      <header className="shrink-0 border-b">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -91,20 +94,28 @@ export default function App() {
             onClick={toggle}
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
-            {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            {theme === "dark" ? <Sun /> : <Moon />}
           </Button>
         </div>
       </header>
 
       <main className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 gap-4 overflow-y-auto p-4 sm:px-6 lg:grid-cols-[360px_1fr] lg:overflow-hidden">
-        <section className="space-y-4 lg:overflow-y-auto lg:pr-1" aria-label="Trip details">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <TripForm onSubmit={handleSubmit} isPending={plan.isPending} />
-          </div>
+        <section className="flex flex-col gap-4 lg:overflow-y-auto lg:pr-1" aria-label="Trip details">
+          <Card className="gap-4 py-4">
+            <CardHeader className="px-4">
+              <CardTitle className="text-sm">Plan a trip</CardTitle>
+              <CardDescription className="text-xs">
+                Every stop the regulations require is placed for you.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4">
+              <TripForm onSubmit={handleSubmit} isPending={plan.isPending} />
+            </CardContent>
+          </Card>
 
           {plan.isError && (
             <Alert variant="destructive">
-              <AlertTriangle className="size-4" />
+              <AlertTriangle />
               <AlertDescription>
                 {plan.error instanceof ApiError ? plan.error.message : "Something went wrong while planning."}
               </AlertDescription>
@@ -113,7 +124,7 @@ export default function App() {
 
           {trip?.warnings.map((warning) => (
             <Alert key={warning}>
-              <Info className="size-4" />
+              <Info />
               <AlertDescription className="text-xs leading-relaxed">{warning}</AlertDescription>
             </Alert>
           ))}
@@ -193,7 +204,7 @@ function TripSummaryStats({ route }: { route: PlannedRoute }) {
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-border sm:border-l sm:pl-6">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 sm:border-l sm:pl-6">
       {stats.map((stat) => (
         <div key={stat.label}>
           <p className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{stat.label}</p>
@@ -201,14 +212,16 @@ function TripSummaryStats({ route }: { route: PlannedRoute }) {
         </div>
       ))}
 
+      {/* Outline Badge carrying the signal hue: the compliant/violating verdict has to read
+          as the same green and red the gauges and timeline use, not as a neutral chip. */}
       {route.violations.length === 0 ? (
-        <span className="rounded-full border border-signal-ok/40 bg-signal-ok/10 px-2.5 py-0.5 text-xs font-medium text-signal-ok">
+        <Badge variant="outline" className="rounded-full border-signal-ok/40 bg-signal-ok/10 text-signal-ok">
           Compliant — 0 violations
-        </span>
+        </Badge>
       ) : (
-        <span className="rounded-full border border-signal-danger/40 bg-signal-danger/10 px-2.5 py-0.5 text-xs font-medium text-signal-danger">
+        <Badge variant="outline" className="rounded-full border-signal-danger/40 bg-signal-danger/10 text-signal-danger">
           {route.violations.length} violations
-        </span>
+        </Badge>
       )}
     </div>
   );
@@ -216,15 +229,17 @@ function TripSummaryStats({ route }: { route: PlannedRoute }) {
 
 function EmptyState() {
   return (
-    <div className="flex size-full flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-8 text-center">
-      <Clock className="size-8 text-muted-foreground" aria-hidden />
-      <div className="max-w-sm space-y-1">
-        <p className="text-sm font-medium">No trip planned yet</p>
-        <p className="text-sm text-muted-foreground">
+    <Empty className="size-full border">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Clock aria-hidden />
+        </EmptyMedia>
+        <EmptyTitle className="text-base">No trip planned yet</EmptyTitle>
+        <EmptyDescription>
           Enter where the truck is, where the load is collected and delivered, and how many of your 70 cycle hours are
           already used. Every stop the regulations require will be placed on the map.
-        </p>
-      </div>
-    </div>
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }

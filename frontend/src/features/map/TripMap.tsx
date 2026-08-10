@@ -114,7 +114,7 @@ export function TripMap({
   const stops = selected?.stops.filter((stop) => RULE[stop.ruleId].isStop) ?? [];
 
   return (
-    <div className="relative size-full overflow-hidden rounded-lg border border-border">
+    <div className="relative size-full overflow-hidden rounded-lg border">
       <Map
         ref={mapRef}
         mapStyle={STYLES[theme]}
@@ -288,7 +288,7 @@ function StopPin({ stop, isOpen }: { stop: Stop; isOpen: boolean }) {
 function StopSummary({ stop }: { stop: Stop }) {
   const Icon = RULE[stop.ruleId].icon;
   return (
-    <div className="space-y-1.5 text-foreground">
+    <div className="flex flex-col gap-1.5 text-foreground">
       <p className="flex items-center gap-1.5 text-sm font-semibold">
         <Icon className="size-3.5" aria-hidden />
         {RULE[stop.ruleId].short}

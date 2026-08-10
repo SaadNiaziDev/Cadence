@@ -26,7 +26,7 @@ export function RulePopover({ ruleId, children }: RulePopoverProps) {
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent className="w-80 text-left" align="center">
         {rule ? (
-          <div className="space-y-2.5">
+          <div className="flex flex-col gap-2.5">
             <div>
               <p className="text-sm font-semibold">{rule.title}</p>
               {rule.citation ? (

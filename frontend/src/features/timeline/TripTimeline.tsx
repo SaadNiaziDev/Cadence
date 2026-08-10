@@ -49,7 +49,7 @@ export function TripTimeline({ route, activeSegmentIndex, onSelectMinute }: Trip
   }, [activeSegmentIndex]);
 
   return (
-    <ol className="space-y-1">
+    <ol className="flex flex-col gap-1">
       {route.segments.map((segment, index) => {
         const presentation = DUTY_STATUS[segment.status];
         const Icon = RULE[segment.ruleId].icon;

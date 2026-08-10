@@ -1,12 +1,23 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, CircleCheck, Info, Navigation, PackageCheck, PackageOpen, Route } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+  FieldTitle,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CYCLE_LIMIT_HOURS } from "@/lib/hos";
-import { cn } from "@/lib/utils";
 import type { TripRequest } from "@/types/hos";
 
 import { adviseOnCycle } from "./cycle-advice";
@@ -35,6 +46,12 @@ function defaultStart(): string {
   return new Date(now.getTime() - offsetMinutes * 60_000).toISOString().slice(0, 16);
 }
 
+/*
+  The advice callout is an Alert, but its tint carries meaning the two stock variants do
+  not: "ok / warn / danger" is the same three-step pressure scale the clock gauges and the
+  timeline use, and it has to stay legible against them. Only the border and wash are
+  themed here — structure, spacing and typography come from Alert.
+*/
 const ADVICE_STYLES = {
   ok: { wrapper: "border-signal-ok/40 bg-signal-ok/10", icon: CircleCheck, tint: "text-signal-ok" },
   warn: { wrapper: "border-signal-warn/40 bg-signal-warn/10", icon: Info, tint: "text-signal-warn" },
@@ -86,130 +103,134 @@ export function TripForm({ onSubmit, isPending }: TripFormProps) {
   }
 
   const AdviceIcon = ADVICE_STYLES[advice.level].icon;
+  const cycleError = showErrors ? errors.cycleUsed : undefined;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-      <div className="space-y-4">
-        <LocationField
-          id="current-location"
-          label="Current location"
-          placeholder="Where is the truck now?"
-          value={form.current}
-          onChange={(value) => update("current", value)}
-          icon={<Navigation className="size-4" aria-hidden />}
-          error={showErrors ? errors.current : undefined}
-        />
-        <LocationField
-          id="pickup-location"
-          label="Pickup"
-          placeholder="Where is the load collected?"
-          value={form.pickup}
-          onChange={(value) => update("pickup", value)}
-          icon={<PackageOpen className="size-4" aria-hidden />}
-          error={showErrors ? errors.pickup : undefined}
-        />
-        <LocationField
-          id="dropoff-location"
-          label="Dropoff"
-          placeholder="Where is the load delivered?"
-          value={form.dropoff}
-          onChange={(value) => update("dropoff", value)}
-          icon={<PackageCheck className="size-4" aria-hidden />}
-          error={showErrors ? errors.dropoff : undefined}
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="cycle-used" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Cycle hours used
-          </Label>
-          <Input
-            id="cycle-used"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            max={CYCLE_LIMIT_HOURS}
-            step={0.5}
-            value={form.cycleUsed}
-            onChange={(event) => update("cycleUsed", event.target.value)}
-            aria-invalid={showErrors && Boolean(errors.cycleUsed)}
-            className={cn("tabular h-11", showErrors && errors.cycleUsed && "border-destructive")}
+    <form onSubmit={handleSubmit} noValidate>
+      <FieldGroup className="gap-5">
+        <FieldGroup className="gap-4">
+          <LocationField
+            id="current-location"
+            label="Current location"
+            placeholder="Where is the truck now?"
+            value={form.current}
+            onChange={(value) => update("current", value)}
+            icon={Navigation}
+            error={showErrors ? errors.current : undefined}
           />
-          {showErrors && errors.cycleUsed && <p className="text-xs text-destructive">{errors.cycleUsed}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="start-time" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Departure
-          </Label>
-          <Input
-            id="start-time"
-            type="datetime-local"
-            value={form.startDateTime}
-            onChange={(event) => update("startDateTime", event.target.value)}
-            className="tabular h-11"
+          <LocationField
+            id="pickup-location"
+            label="Pickup"
+            placeholder="Where is the load collected?"
+            value={form.pickup}
+            onChange={(value) => update("pickup", value)}
+            icon={PackageOpen}
+            error={showErrors ? errors.pickup : undefined}
           />
-        </div>
-      </div>
+          <LocationField
+            id="dropoff-location"
+            label="Dropoff"
+            placeholder="Where is the load delivered?"
+            value={form.dropoff}
+            onChange={(value) => update("dropoff", value)}
+            icon={PackageCheck}
+            error={showErrors ? errors.dropoff : undefined}
+          />
+        </FieldGroup>
 
-      {/* The prevention layer: the consequence of the cycle balance, while it is still
-          being typed rather than after a plan has been read. */}
-      <div
-        className={cn("flex gap-3 rounded-md border p-3", ADVICE_STYLES[advice.level].wrapper)}
-        role="status"
-        aria-live="polite"
-      >
-        <AdviceIcon className={cn("mt-0.5 size-4 shrink-0", ADVICE_STYLES[advice.level].tint)} aria-hidden />
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{advice.headline}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{advice.detail}</p>
-        </div>
-      </div>
+        <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field className="gap-1.5" data-invalid={cycleError ? true : undefined}>
+            <FieldLabel htmlFor="cycle-used" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Cycle hours used
+            </FieldLabel>
+            <Input
+              id="cycle-used"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={CYCLE_LIMIT_HOURS}
+              step={0.5}
+              value={form.cycleUsed}
+              onChange={(event) => update("cycleUsed", event.target.value)}
+              aria-invalid={Boolean(cycleError)}
+              className="tabular h-11"
+            />
+            <FieldError>{cycleError}</FieldError>
+          </Field>
 
-      <div className="flex items-center justify-between gap-4 rounded-md border border-border px-3 py-2.5">
-        <div>
-          <Label htmlFor="compare-routes" className="text-sm font-medium">
-            Compare routes
-          </Label>
-          <p className="text-xs text-muted-foreground">Rank alternatives by arrival time, not distance.</p>
-        </div>
-        <Switch
-          id="compare-routes"
-          checked={form.compareRoutes}
-          onCheckedChange={(checked) => update("compareRoutes", checked)}
-        />
-      </div>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="start-time" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Departure
+            </FieldLabel>
+            <Input
+              id="start-time"
+              type="datetime-local"
+              value={form.startDateTime}
+              onChange={(event) => update("startDateTime", event.target.value)}
+              className="tabular h-11"
+            />
+          </Field>
+        </FieldGroup>
 
-      <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isPending}>
-        <Route className="size-4" aria-hidden />
-        {isPending ? "Planning…" : "Plan this trip"}
-      </Button>
+        {/* The prevention layer: the consequence of the cycle balance, while it is still
+            being typed rather than after a plan has been read. */}
+        <Alert className={ADVICE_STYLES[advice.level].wrapper} aria-live="polite">
+          <AdviceIcon className={ADVICE_STYLES[advice.level].tint} aria-hidden />
+          <AlertTitle>{advice.headline}</AlertTitle>
+          <AlertDescription className="text-xs leading-relaxed">{advice.detail}</AlertDescription>
+        </Alert>
 
-      <div className="space-y-2 border-t border-border pt-4">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Or try one</p>
-        <div className="flex flex-wrap gap-2">
-          {SAMPLE_TRIPS.map((sample) => (
-            <button
-              key={sample.name}
-              type="button"
-              title={sample.why}
-              onClick={() =>
-                setForm((previous) => ({
-                  ...previous,
-                  current: sample.current,
-                  pickup: sample.pickup,
-                  dropoff: sample.dropoff,
-                  cycleUsed: String(sample.cycleUsedHours),
-                }))
-              }
-              className="rounded-full border border-border px-3 py-1.5 text-xs transition-colors hover:border-primary/50 hover:bg-accent"
-            >
-              {sample.name}
-            </button>
-          ))}
-        </div>
-      </div>
+        <Field orientation="horizontal" className="rounded-md border px-3 py-2.5">
+          <FieldContent>
+            <FieldLabel htmlFor="compare-routes">Compare routes</FieldLabel>
+            <FieldDescription className="text-xs">Rank alternatives by arrival time, not distance.</FieldDescription>
+          </FieldContent>
+          <Switch
+            id="compare-routes"
+            checked={form.compareRoutes}
+            onCheckedChange={(checked) => update("compareRoutes", checked)}
+          />
+        </Field>
+
+        <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={isPending}>
+          {isPending ? <Spinner /> : <Route aria-hidden />}
+          {isPending ? "Planning…" : "Plan this trip"}
+        </Button>
+
+        <FieldSeparator />
+
+        <Field className="gap-2">
+          {/* FieldTitle rather than FieldLabel: these prefill the whole form, so there is no
+              single control for a label to point at. */}
+          <FieldTitle className="text-xs uppercase tracking-wide text-muted-foreground">Or try one</FieldTitle>
+          <div className="flex flex-wrap gap-2">
+            {SAMPLE_TRIPS.map((sample) => (
+              <Tooltip key={sample.name}>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() =>
+                      setForm((previous) => ({
+                        ...previous,
+                        current: sample.current,
+                        pickup: sample.pickup,
+                        dropoff: sample.dropoff,
+                        cycleUsed: String(sample.cycleUsedHours),
+                      }))
+                    }
+                  >
+                    {sample.name}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{sample.why}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </Field>
+      </FieldGroup>
     </form>
   );
 }

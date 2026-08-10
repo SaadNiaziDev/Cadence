@@ -1,3 +1,4 @@
+import { Card, CardContent } from "@/components/ui/card";
 import { CLOCKS, readClock } from "@/lib/hos";
 import type { ClockSnapshot, RuleId } from "@/types/hos";
 
@@ -20,21 +21,25 @@ interface ClocksHudProps {
  */
 export function ClocksHud({ clocks, bindingRuleId }: ClocksHudProps) {
   return (
-    <div className="grid shrink-0 grid-cols-4 gap-1 rounded-lg border border-border bg-card px-2 py-1.5">
-      {CLOCKS.map((clock) => {
-        const { used } = readClock(clocks, clock.key);
-        return (
-          <RulePopover key={clock.key} ruleId={clock.ruleId as RuleId}>
-            <ClockGauge
-              label={clock.label}
-              caption={clock.caption}
-              usedMinutes={used}
-              limitHours={clock.limitHours}
-              isBinding={bindingRuleId === clock.ruleId}
-            />
-          </RulePopover>
-        );
-      })}
-    </div>
+    // No CardHeader: the four gauges are self-labelling and the panel is height-critical,
+    // so a title row would cost more than it explains.
+    <Card className="shrink-0 gap-0 rounded-lg py-1.5 shadow-none">
+      <CardContent className="grid grid-cols-4 gap-1 px-2">
+        {CLOCKS.map((clock) => {
+          const { used } = readClock(clocks, clock.key);
+          return (
+            <RulePopover key={clock.key} ruleId={clock.ruleId as RuleId}>
+              <ClockGauge
+                label={clock.label}
+                caption={clock.caption}
+                usedMinutes={used}
+                limitHours={clock.limitHours}
+                isBinding={bindingRuleId === clock.ruleId}
+              />
+            </RulePopover>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
