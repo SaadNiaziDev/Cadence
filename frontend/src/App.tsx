@@ -11,6 +11,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClocksHud } from "@/features/hud/ClocksHud";
+import { LogSheets } from "@/features/logs/LogSheets";
 import { Scrubber } from "@/features/scrubber/Scrubber";
 import { TripTimeline } from "@/features/timeline/TripTimeline";
 import { TripForm } from "@/features/trip/TripForm";
@@ -148,6 +149,7 @@ export default function App() {
                 <TabsList className="shrink-0 self-start">
                   <TabsTrigger value="map">Map</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                  <TabsTrigger value="logs">Log sheets</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="map" className="mt-2 min-h-[45vh] flex-1 lg:min-h-0">
@@ -167,6 +169,17 @@ export default function App() {
                   <TripTimeline
                     route={route}
                     activeSegmentIndex={position.segmentIndex}
+                    onSelectMinute={(value) => {
+                      setIsPlaying(false);
+                      setMinute(value);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="logs" className="mt-2 flex min-h-0 flex-1 flex-col">
+                  <LogSheets
+                    route={route}
+                    minute={minute}
                     onSelectMinute={(value) => {
                       setIsPlaying(false);
                       setMinute(value);

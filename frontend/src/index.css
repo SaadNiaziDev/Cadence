@@ -140,6 +140,114 @@
   }
 }
 
+/*
+  The log sheet is a document, not a panel.
+
+  Its ink, rules and paper are declared as their own variables so the print stylesheet can
+  move the whole sheet onto white paper in one place. The SVG never mentions print; it only
+  ever reads these four values.
+*/
+.log-sheet {
+  --sheet-paper: var(--card);
+  --sheet-ink: var(--foreground);
+  --sheet-rule: var(--muted-foreground);
+  --sheet-muted: var(--muted-foreground);
+  --sheet-band: var(--muted);
+}
+
+.log-sheet text {
+  font-variant-numeric: tabular-nums;
+}
+
+.log-sheet .sheet-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.log-sheet .sheet-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.log-sheet .sheet-caption {
+  font-size: 10px;
+}
+
+.log-sheet .sheet-value {
+  font-size: 13px;
+}
+
+.log-sheet .sheet-hour {
+  font-size: 10px;
+}
+
+.log-sheet .sheet-hour-anchor {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.log-sheet .sheet-total {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.log-sheet .sheet-remark {
+  font-size: 9px;
+  text-anchor: end;
+}
+
+.log-sheet .sheet-hit:hover {
+  fill: color-mix(in oklch, var(--sheet-ink) 12%, transparent);
+}
+
+/* The screen shows one sheet at a time; paper gets the whole set. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  /* One sheet per page, printed as the paper form: black ink on white, with the duty
+     hues and the hour band forced through so a printed log is still readable. */
+  @page {
+    size: portrait;
+    margin: 12mm;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+  }
+
+  .print-sheet {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .log-sheet {
+    --sheet-paper: #fff;
+    --sheet-ink: #000;
+    --sheet-rule: #666;
+    --sheet-muted: #333;
+    --sheet-band: #d4d4d4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
