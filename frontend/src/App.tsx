@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ClocksHud } from "@/features/hud/ClocksHud";
 import { LogSheets } from "@/features/logs/LogSheets";
+import { RouteComparison } from "@/features/routes/RouteComparison";
 import { Scrubber } from "@/features/scrubber/Scrubber";
 import { TripTimeline } from "@/features/timeline/TripTimeline";
 import { TripForm } from "@/features/trip/TripForm";
@@ -31,6 +32,7 @@ export default function App() {
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [minute, setMinute] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [highlightedRoute, setHighlightedRoute] = useState<number | null>(null);
 
   const plan = usePlanTrip();
   const route: PlannedRoute | null = trip?.routes[selectedRoute] ?? trip?.routes[0] ?? null;
@@ -114,6 +116,15 @@ export default function App() {
             </CardContent>
           </Card>
 
+          {trip && (
+            <RouteComparison
+              routes={trip.routes}
+              selectedIndex={selectedRoute}
+              onSelect={setSelectedRoute}
+              onHover={setHighlightedRoute}
+            />
+          )}
+
           {plan.isError && (
             <Alert variant="destructive">
               <AlertTriangle />
@@ -161,6 +172,7 @@ export default function App() {
                       theme={theme}
                       onSelectRoute={setSelectedRoute}
                       vehiclePosition={vehiclePosition}
+                      highlightedRoute={highlightedRoute}
                     />
                   </Suspense>
                 </TabsContent>

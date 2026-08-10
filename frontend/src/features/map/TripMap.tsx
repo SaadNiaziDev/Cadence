@@ -43,6 +43,11 @@ interface TripMapProps {
   onSelectRoute: (index: number) => void;
   /** Truck position along the selected route, from the scrubber. */
   vehiclePosition?: [number, number] | null;
+  /**
+   * A route to pick out even though the pointer is elsewhere — set while a comparison card
+   * is hovered, so the card and the line it describes light up together.
+   */
+  highlightedRoute?: number | null;
 }
 
 function lineFeature(route: PlannedRoute) {
@@ -77,10 +82,15 @@ export function TripMap({
   theme,
   onSelectRoute,
   vehiclePosition,
+  highlightedRoute = null,
 }: TripMapProps) {
   const mapRef = useRef<MapRef>(null);
   const [openStop, setOpenStop] = useState<Stop | null>(null);
-  const [hoveredRoute, setHoveredRoute] = useState<number | null>(null);
+  const [pointerRoute, setPointerRoute] = useState<number | null>(null);
+
+  // The pointer wins when it is actually over a line, so hovering the map never fights a
+  // card the mouse has already left.
+  const hoveredRoute = pointerRoute ?? highlightedRoute;
 
   const selected = routes[selectedIndex] ?? routes[0];
   const alternatives = useMemo(
@@ -129,9 +139,9 @@ export function TripMap({
         }}
         onMouseMove={(event) => {
           const index = event.features?.[0]?.properties?.index;
-          setHoveredRoute(typeof index === "number" ? index : null);
+          setPointerRoute(typeof index === "number" ? index : null);
         }}
-        cursor={hoveredRoute === null ? "grab" : "pointer"}
+        cursor={pointerRoute === null ? "grab" : "pointer"}
         style={{ width: "100%", height: "100%" }}
       >
         <AttributionControl compact position="bottom-right" />
