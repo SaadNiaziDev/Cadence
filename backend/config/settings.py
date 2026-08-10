@@ -117,6 +117,11 @@ CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "http://localhost:5173,h
 # Preview deployments get a generated subdomain per commit, so they are matched by pattern.
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^https://.*\.vercel\.app$"]
 
+if DEBUG:
+    # Vite moves to the next free port when 5173 is taken, which silently turns every API
+    # call into a CORS failure. Any loopback port is acceptable in development.
+    CORS_ALLOWED_ORIGIN_REGEXES += [r"^http://(localhost|127\.0\.0\.1):\d+$"]
+
 # Geocoding and routing responses are stable for a given query, and both upstream
 # services are rate limited, so every lookup is cached rather than repeated.
 CACHES = {
