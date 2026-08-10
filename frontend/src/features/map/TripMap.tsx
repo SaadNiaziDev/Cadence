@@ -177,7 +177,7 @@ export function TripMap({
           </Marker>
         ))}
 
-        {stops.map((stop) => (
+        {stops.map((stop, index) => (
           <Marker
             key={`${stop.ruleId}-${stop.startMinute}`}
             longitude={stop.position[0]}
@@ -188,7 +188,18 @@ export function TripMap({
               setOpenStop(stop);
             }}
           >
-            <StopPin stop={stop} isOpen={openStop?.startMinute === stop.startMinute} />
+            {/* Stops arrive in order along the route rather than all at once. `stops` is
+                already ordered by distance from the origin, so the stagger reads as the
+                trip being driven — the one thing a static row of pins cannot say. The
+                delay is capped so a five-day trip with a dozen stops still settles
+                quickly, and the whole thing is CSS, so the global reduced-motion rule
+                already switches it off. */}
+            <span
+              className="stop-pin-enter block"
+              style={{ animationDelay: `${Math.min(index * 50, 900)}ms` }}
+            >
+              <StopPin stop={stop} isOpen={openStop?.startMinute === stop.startMinute} />
+            </span>
           </Marker>
         ))}
 

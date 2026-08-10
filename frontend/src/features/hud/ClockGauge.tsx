@@ -26,20 +26,18 @@ const CENTER_X = 50;
 const CENTER_Y = 48;
 const STROKE = 8;
 
+/** Half a circumference: the length of the full arc, used as the dash pattern. */
+const ARC_LENGTH = Math.PI * RADIUS;
+
 function polar(angleDegrees: number): [number, number] {
   const radians = (angleDegrees * Math.PI) / 180;
   return [CENTER_X + RADIUS * Math.cos(radians), CENTER_Y - RADIUS * Math.sin(radians)];
 }
 
-/** Sweeps left (180°) to right (0°) across the top half. */
-function arcPath(fraction: number): string {
-  const clamped = Math.max(0, Math.min(fraction, 1));
-  // An unused clock draws nothing at all. A zero-length path with a round cap renders as
-  // a lone dot floating at the start of the track, which reads as a rendering glitch
-  // rather than as "none of this clock has been used".
-  if (clamped <= 0) return "";
+/** The whole arc, sweeping left (180°) to right (0°) across the top half. */
+function arcPath(): string {
   const [startX, startY] = polar(180);
-  const [endX, endY] = polar(180 - 180 * clamped);
+  const [endX, endY] = polar(0);
   return `M ${startX} ${startY} A ${RADIUS} ${RADIUS} 0 0 1 ${endX} ${endY}`;
 }
 
@@ -52,7 +50,7 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
   const limitMinutes = limitHours * MINUTES_PER_HOUR;
   const remaining = Math.max(limitMinutes - usedMinutes, 0);
   const pressure = pressureOf(usedMinutes, limitMinutes);
-  const fraction = limitMinutes > 0 ? usedMinutes / limitMinutes : 0;
+  const fraction = limitMinutes > 0 ? Math.max(0, Math.min(usedMinutes / limitMinutes, 1)) : 0;
 
   return (
     <button
@@ -75,13 +73,19 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
           aria-valuemin={0}
           aria-valuemax={limitMinutes}
         >
-          <path d={arcPath(1)} fill="none" strokeWidth={STROKE} strokeLinecap="round" className="stroke-muted" />
+          <path d={arcPath()} fill="none" strokeWidth={STROKE} strokeLinecap="round" className="stroke-muted" />
+          {/* One fixed path revealed by its dash offset, rather than a path whose `d` is
+              recomputed per frame. That is what lets a plain CSS transition ease the sweep
+              as the scrubber moves, and it removes the old zero-length special case too:
+              at full offset nothing is painted, so an unused clock draws no stray cap. */}
           <path
-            d={arcPath(fraction)}
+            d={arcPath()}
             fill="none"
             strokeWidth={STROKE}
             strokeLinecap="round"
-            className={PRESSURE_STROKE[pressure]}
+            strokeDasharray={ARC_LENGTH}
+            style={{ strokeDashoffset: ARC_LENGTH * (1 - fraction) }}
+            className={cn("gauge-sweep", PRESSURE_STROKE[pressure])}
           />
         </svg>
 
