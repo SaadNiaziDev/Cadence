@@ -267,3 +267,38 @@ class InitialClockTests(SimpleTestCase):
         plan = simulate([leg(0), leg(120)], cycle_used_minutes=0, start_minute=0)
         assert plan.initial_clocks is not None
         self.assertEqual(plan.initial_clocks.cycle_remaining, CYCLE_LIMIT_MINUTES)
+
+
+class NoNearlyThereExemptionTests(SimpleTestCase):
+    """Part 395 has no allowance for finishing a trip on an expired clock.
+
+    These exist because the tempting shortcut — "it is only a few more miles, let it
+    finish" — is the one place a planner is most likely to quietly become non-compliant.
+    """
+
+    def test_the_rest_still_happens_one_minute_from_the_destination(self):
+        # Driving one minute longer than the 11-hour limit allows.
+        plan = simulate([leg(0), leg(DRIVING_LIMIT_MINUTES + 1)], cycle_used_minutes=0, start_minute=0)
+
+        rests = segments_with(plan, rules.RULE_DRIVING_LIMIT)
+        self.assertEqual(len(rests), 1)
+        self.assertEqual(rests[0].duration_minutes, DAILY_RESET_MINUTES)
+        self.assertEqual(plan.violations, [])
+
+    def test_the_final_minute_is_driven_only_after_the_rest(self):
+        plan = simulate([leg(0), leg(DRIVING_LIMIT_MINUTES + 1)], cycle_used_minutes=0, start_minute=0)
+
+        rest_index = plan.segments.index(segments_with(plan, rules.RULE_DRIVING_LIMIT)[0])
+        after_rest = [s for s in plan.segments[rest_index + 1 :] if s.status is DutyStatus.DRIVING]
+        self.assertEqual(sum(s.duration_minutes for s in after_rest), 1)
+
+    def test_no_driving_segment_ever_exceeds_a_clock_however_short_the_overrun(self):
+        # One minute past each limit in turn: the engine must stop at every one.
+        for minutes in (DRIVING_BEFORE_BREAK_MINUTES + 1, DRIVING_LIMIT_MINUTES + 1, DRIVING_LIMIT_MINUTES + 5):
+            with self.subTest(minutes=minutes):
+                plan = simulate([leg(0), leg(minutes)], cycle_used_minutes=0, start_minute=0)
+                self.assertEqual(plan.violations, [])
+                for segment in plan.segments:
+                    if segment.status is DutyStatus.DRIVING:
+                        self.assertLessEqual(segment.clocks_after.driving_used, DRIVING_LIMIT_MINUTES)
+                        self.assertLessEqual(segment.clocks_after.break_driving_used, DRIVING_BEFORE_BREAK_MINUTES)

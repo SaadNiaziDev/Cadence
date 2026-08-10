@@ -25,7 +25,10 @@ export class ApiError extends Error {
  */
 export async function apiFetch<T>(
   path: string,
-  schema: z.ZodType<T>,
+  // Output-typed rather than `z.ZodType<T>`: schemas that supply defaults for fields
+  // added after a trip was saved have an input type that differs from their output, and
+  // the stricter signature rejects them.
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
   init?: RequestInit,
 ): Promise<T> {
   let response: Response;

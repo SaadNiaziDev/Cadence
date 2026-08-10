@@ -66,6 +66,10 @@ export const stopSchema = z.object({
   startAt: z.string(),
   durationMinutes: z.number(),
   milesFromOrigin: z.number(),
+  milesToDestination: z.number().default(0),
+  minutesToDestination: z.number().default(0),
+  /** A mandatory long stop that lands within sight of the delivery. */
+  isNearDestination: z.boolean().default(false),
   location: z.string(),
   position: z.tuple([z.number(), z.number()]),
 });

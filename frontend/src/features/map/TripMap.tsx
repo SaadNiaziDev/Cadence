@@ -266,10 +266,17 @@ function StopPin({ stop, isOpen }: { stop: Stop; isOpen: boolean }) {
   return (
     <button
       type="button"
-      aria-label={`${RULE[stop.ruleId].short} at ${stop.location}`}
+      aria-label={
+        stop.isNearDestination
+          ? `${RULE[stop.ruleId].short} at ${stop.location}, only ${stop.minutesToDestination} minutes from the dropoff`
+          : `${RULE[stop.ruleId].short} at ${stop.location}`
+      }
       className={cn(
-        "flex size-7 items-center justify-center rounded-full border-2 border-background shadow-md transition-transform",
+        "flex size-7 items-center justify-center rounded-full border-2 shadow-md transition-transform",
         "bg-card text-foreground hover:scale-110",
+        // A mandatory rest within sight of the delivery is the one stop worth finding
+        // on the map without hunting for it.
+        stop.isNearDestination ? "border-signal-warn ring-2 ring-signal-warn/40" : "border-background",
         isOpen && "scale-110 ring-2 ring-ring",
       )}
     >
@@ -295,6 +302,13 @@ function StopSummary({ stop }: { stop: Stop }) {
         <dt className="text-muted-foreground">Mile</dt>
         <dd>{formatMiles(stop.milesFromOrigin)}</dd>
       </dl>
+
+      {stop.isNearDestination && (
+        <p className="rounded border border-signal-warn/40 bg-signal-warn/10 px-2 py-1.5 text-xs leading-relaxed text-signal-warn">
+          Only {formatDuration(stop.minutesToDestination)} of driving left to the dropoff — but the clock has run
+          out, and Part 395 has no exemption for finishing the last few miles.
+        </p>
+      )}
     </div>
   );
 }

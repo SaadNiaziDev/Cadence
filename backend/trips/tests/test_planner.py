@@ -186,3 +186,70 @@ class PayloadTests(SimpleTestCase):
     def test_timestamps_are_absolute_so_the_client_never_recomputes_dates(self):
         summary = self.payload["routes"][0]["summary"]
         self.assertTrue(summary["arrivalAt"].startswith("2026-03-"))
+
+
+class NearDestinationTests(SimpleTestCase):
+    """A long stop that lands within sight of the delivery is the one drivers feel."""
+
+    def stops_of(self, distance_miles, duration_minutes, cycle_used_hours=0.0):
+        planned = plan_with([route(distance_miles, duration_minutes)], cycle_used_hours=cycle_used_hours).selected
+        return planned.stops
+
+    def test_every_stop_reports_how_much_road_is_left(self):
+        stops = self.stops_of(700.0, 700)
+        for stop in stops:
+            self.assertGreaterEqual(stop.miles_to_destination, 0)
+            self.assertGreaterEqual(stop.minutes_to_destination, 0)
+        # The dropoff is at the end, so nothing remains once it is reached.
+        dropoff = next(stop for stop in stops if stop.rule_id == rules.RULE_DROPOFF)
+        self.assertAlmostEqual(dropoff.miles_to_destination, 0.0, places=3)
+
+    def test_a_rest_far_from_the_delivery_is_not_flagged(self):
+        # A cross-country trip rests many hours short of the dropoff every time.
+        stops = self.stops_of(2794.0, 2988)
+        first_rest = next(stop for stop in stops if stop.rule_id == rules.RULE_DRIVING_LIMIT)
+        self.assertFalse(first_rest.is_near_destination)
+
+    def test_a_rest_close_to_the_delivery_is_flagged(self):
+        # 12 hours of driving: the 11-hour limit expires with about an hour still to run.
+        stops = self.stops_of(720.0, 720)
+        rests = [stop for stop in stops if stop.rule_id == rules.RULE_DRIVING_LIMIT]
+        self.assertTrue(rests)
+        self.assertTrue(rests[-1].is_near_destination)
+        self.assertLessEqual(rests[-1].minutes_to_destination, planner.NEAR_DESTINATION_MINUTES)
+
+    def test_short_stops_are_never_flagged_however_close_they_are(self):
+        # A fuel stop or a 30-minute break near the end costs almost nothing.
+        stops = self.stops_of(720.0, 720)
+        for stop in stops:
+            if stop.rule_id in {rules.RULE_BREAK, rules.RULE_FUEL, rules.RULE_DROPOFF, rules.RULE_INSPECTION}:
+                self.assertFalse(stop.is_near_destination, stop.rule_id)
+
+    def test_the_warning_calls_the_stop_mandatory_and_offers_no_exemption(self):
+        # Part 395 has no allowance for finishing the last few miles, so the app must not
+        # imply one however close the delivery is.
+        result = plan_with([route(720.0, 720)])
+        advice = next(w for w in result.warnings if "11-hour driving limit" in w)
+        self.assertIn("mandatory", advice)
+        self.assertIn("no provision in Part 395", advice)
+
+    def test_a_sleeper_split_is_not_offered_against_the_eleven_hour_limit(self):
+        # A split under 395.1(g) exempts sleeper time from the 14-hour window. It does
+        # nothing for the 11-hour driving cap, and suggesting otherwise would be wrong.
+        result = plan_with([route(720.0, 720)])
+        advice = next(w for w in result.warnings if "11-hour driving limit" in w)
+        self.assertIn("cannot be extended", advice)
+        self.assertNotIn("395.1(g)", advice)
+
+    def test_the_warning_names_the_restart_as_avoidable(self):
+        result = plan_with([route(300.0, 300)], cycle_used_hours=68.0)
+        near = [stop for stop in result.selected.stops if stop.is_near_destination]
+        if near:
+            advice = next(w for w in result.warnings if "34-hour restart" in w and "short of the dropoff" in w)
+            self.assertIn("before you leave", advice)
+
+    def test_the_payload_publishes_the_flag_for_the_map(self):
+        payload = planner.to_payload(plan_with([route(720.0, 720)]))
+        stop = next(s for s in payload["routes"][0]["stops"] if s["ruleId"] == rules.RULE_DRIVING_LIMIT)
+        self.assertIn("isNearDestination", stop)
+        self.assertIn("minutesToDestination", stop)

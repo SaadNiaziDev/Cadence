@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, TriangleAlert } from "lucide-react";
 
 import { RulePopover } from "@/features/hud/RulePopover";
 import { DUTY_STATUS, RULE, formatClockTime, formatDuration, formatMiles } from "@/lib/hos";
@@ -10,6 +10,14 @@ interface TripTimelineProps {
   route: PlannedRoute;
   activeSegmentIndex: number;
   onSelectMinute: (minute: number) => void;
+}
+
+/** Minutes of driving left to the delivery when a stop begins, if it is close enough to matter. */
+function minutesFromDelivery(route: PlannedRoute, segment: Segment): number | null {
+  const stop = route.stops.find(
+    (candidate) => candidate.startMinute === segment.startMinute && candidate.ruleId === segment.ruleId,
+  );
+  return stop?.isNearDestination ? stop.minutesToDestination : null;
 }
 
 /**
@@ -47,6 +55,7 @@ export function TripTimeline({ route, activeSegmentIndex, onSelectMinute }: Trip
         const Icon = RULE[segment.ruleId].icon;
         const isActive = index === activeSegmentIndex;
         const note = smartNote(segment, route.segments[index + 1]);
+        const nearDelivery = minutesFromDelivery(route, segment);
 
         return (
           <li key={`${segment.startMinute}-${segment.ruleId}`} ref={isActive ? activeRef : undefined}>
@@ -81,6 +90,14 @@ export function TripTimeline({ route, activeSegmentIndex, onSelectMinute }: Trip
                   <span className="mt-1 flex items-start gap-1 text-xs leading-relaxed text-signal-ok">
                     <Sparkles className="mt-0.5 size-3 shrink-0" aria-hidden />
                     {note}
+                  </span>
+                )}
+
+                {nearDelivery !== null && (
+                  <span className="mt-1 flex items-start gap-1 text-xs leading-relaxed text-signal-warn">
+                    <TriangleAlert className="mt-0.5 size-3 shrink-0" aria-hidden />
+                    Only {formatDuration(nearDelivery)} of driving from the dropoff, but the clock has run out.
+                    Part 395 has no exemption for the last few miles.
                   </span>
                 )}
               </span>

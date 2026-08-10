@@ -52,6 +52,16 @@ _STOP_RULES = {
 }
 
 
+#: A mandatory stop closer than this to the delivery is worth calling out. Ninety minutes
+#: of driving is roughly the point at which a driver stops thinking "long way to go" and
+#: starts thinking "I could have made it".
+NEAR_DESTINATION_MINUTES = 90
+
+#: Stops that force the driver to park for hours. A fuel stop or a 30-minute break near
+#: the end of a trip is a non-event; a 10-hour rest is the thing that hurts.
+_LONG_STOP_RULES = {rules.RULE_DRIVING_LIMIT, rules.RULE_DUTY_WINDOW, rules.RULE_RESTART}
+
+
 @dataclass(frozen=True)
 class Stop:
     """A place the driver must stop, ready to be drawn on the map."""
@@ -64,6 +74,11 @@ class Stop:
     longitude: float
     latitude: float
     location: str
+    #: How much road is left when this stop begins.
+    miles_to_destination: float = 0.0
+    minutes_to_destination: int = 0
+    #: True when a long stop lands within sight of the delivery.
+    is_near_destination: bool = False
 
 
 @dataclass
@@ -232,10 +247,16 @@ def _extract_stops(
 ) -> list[Stop]:
     """Every non-driving segment that represents a real stop, placed on the road."""
     stops: list[Stop] = []
+    mph = route.average_mph or 1.0
+
     for segment in segments:
         if segment.rule_id not in _STOP_RULES:
             continue
         longitude, latitude = geo.position_at_miles(route.geometry, cumulative, segment.start_miles * scale)
+
+        miles_left = max(route.distance_miles - segment.start_miles, 0.0)
+        minutes_left = round(miles_left / mph * MINUTES_PER_HOUR)
+
         stops.append(
             Stop(
                 rule_id=segment.rule_id,
@@ -246,6 +267,12 @@ def _extract_stops(
                 longitude=longitude,
                 latitude=latitude,
                 location=locate(segment.start_miles),
+                miles_to_destination=miles_left,
+                minutes_to_destination=minutes_left,
+                is_near_destination=(
+                    segment.rule_id in _LONG_STOP_RULES
+                    and 0 < minutes_left <= NEAR_DESTINATION_MINUTES
+                ),
             )
         )
     return stops
@@ -265,6 +292,50 @@ def _ranking_key(entry: PlannedRoute) -> tuple:
         entry.rest_count,
         entry.plan.on_duty_minutes,
         entry.route.distance_miles,
+    )
+
+
+def _near_destination_advice(stop: Stop) -> str:
+    """Explain a long stop that lands within sight of the delivery.
+
+    Part 395 is regulation, not guidance. There is no allowance for finishing the last
+    few miles once a clock has expired, and this planner never offers one — the stop
+    stands whether the delivery is 300 miles away or 3. What differs between the clocks
+    is which lawful choices, taken earlier, would have avoided the situation:
+
+    * The 11-hour driving limit is wheel time between qualifying rests. Nothing rearranges
+      it — not an earlier departure, and not a sleeper-berth split, which exempts sleeper
+      time from the 14-hour window but leaves the 11-hour cap untouched. Only the choice
+      of *where* to spend the mandatory rest remains open.
+    * The 14-hour window opens when the driver goes on duty and travels with them, so
+      leaving earlier is no help either. Less on-duty time inside the shift is, and so is
+      a sleeper-berth split under 395.1(g), which this planner does not model.
+    * An exhausted 70-hour cycle is the one case genuinely fixed before departure.
+    """
+    miles = round(stop.miles_to_destination)
+    minutes = stop.minutes_to_destination
+    short_by = f"{miles} miles ({minutes} minutes) short of the dropoff"
+
+    if stop.rule_id == rules.RULE_DRIVING_LIMIT:
+        return (
+            f"You reach the 11-hour driving limit {short_by}. This stop is mandatory: no provision in Part 395 "
+            "lets you drive the last few miles, and the 11-hour cap cannot be extended by leaving earlier or by "
+            "a sleeper-berth split. What is still your choice is where you spend it — plan the 10 hours at a "
+            "truck stop before this point rather than at the roadside by the customer's gate."
+        )
+
+    if stop.rule_id == rules.RULE_DUTY_WINDOW:
+        return (
+            f"Your 14-hour window closes {short_by}, and you may not drive again until you have taken 10 "
+            "consecutive hours off. Leaving earlier would not change this, because the window opens when you "
+            "come on duty and moves with you. Spending less of the shift stopped does help, as does a "
+            "sleeper-berth split under 395.1(g), which this planner does not model."
+        )
+
+    return (
+        f"Your 70-hour cycle runs out {short_by}, forcing a 34-hour restart almost at the door. This is the one "
+        "case you can plan away: taking the restart before you leave lets you run the whole trip in one go and "
+        "arrive sooner."
     )
 
 
@@ -296,6 +367,13 @@ def _warnings(
 
     if planned and planned[0].restart_count:
         messages.append("This trip needs a 34-hour restart, which adds a day and a half to the schedule.")
+
+    if planned:
+        # Only the last one matters: an earlier rest 80 minutes out is unremarkable if a
+        # later one lands 10 minutes from the door.
+        near = [stop for stop in planned[0].stops if stop.is_near_destination]
+        if near:
+            messages.append(_near_destination_advice(min(near, key=lambda stop: stop.minutes_to_destination)))
 
     return messages
 
@@ -392,6 +470,9 @@ def _stop_payload(stop: Stop, at) -> dict:
         "startAt": at(stop.start_minute),
         "durationMinutes": stop.duration_minutes,
         "milesFromOrigin": round(stop.miles_from_origin, 1),
+        "milesToDestination": round(stop.miles_to_destination, 1),
+        "minutesToDestination": stop.minutes_to_destination,
+        "isNearDestination": stop.is_near_destination,
         "location": stop.location,
         "position": [round(stop.longitude, 5), round(stop.latitude, 5)],
     }
