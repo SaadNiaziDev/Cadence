@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Design language: instrument panel, not SaaS dashboard.
+
+  Two deliberate choices drive the whole palette:
+
+  1. The four duty statuses own four hues (slate / indigo / green / amber) and red is
+     reserved for "at or past a legal limit". Those five are never used for anything
+     decorative, so a colour always means the same thing on the map, the timeline, the
+     clock gauges and the log grid.
+
+  2. Because the status hues are spoken for, the brand accent is a warm paper cream
+     rather than another saturated colour. It ties the dark cab-at-night interface back
+     to the paper log sheets the app produces, and it sidesteps the blue/violet default
+     that makes generated interfaces recognisable at a glance.
+*/
+
+:root {
+  --radius: 0.5rem;
+
+  /* Light theme: what prints, and what a daylight cab needs. */
+  --background: oklch(0.985 0.004 85);
+  --foreground: oklch(0.21 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 250);
+  --primary: oklch(0.24 0.025 250);
+  --primary-foreground: oklch(0.97 0.01 85);
+  --secondary: oklch(0.955 0.006 85);
+  --secondary-foreground: oklch(0.24 0.025 250);
+  --muted: oklch(0.955 0.006 85);
+  --muted-foreground: oklch(0.5 0.015 250);
+  --accent: oklch(0.94 0.01 250);
+  --accent-foreground: oklch(0.24 0.025 250);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.98 0.005 85);
+  --border: oklch(0.9 0.008 250);
+  --input: oklch(0.9 0.008 250);
+  --ring: oklch(0.55 0.03 250);
+
+  /* Duty status hues. Identical semantics in both themes; only lightness shifts. */
+  --status-off: oklch(0.55 0.03 250);
+  --status-sleeper: oklch(0.52 0.15 285);
+  --status-driving: oklch(0.56 0.15 150);
+  --status-onduty: oklch(0.65 0.15 70);
+
+  /* Clock pressure: how close a legal limit is to being hit. */
+  --signal-ok: oklch(0.56 0.15 150);
+  --signal-warn: oklch(0.68 0.15 70);
+  --signal-danger: oklch(0.55 0.2 25);
+}
+
+.dark {
+  /* Dark is the default: the real usage context is a cab at night or a dispatch desk. */
+  --background: oklch(0.17 0.014 250);
+  --foreground: oklch(0.93 0.012 85);
+  --card: oklch(0.21 0.016 250);
+  --card-foreground: oklch(0.93 0.012 85);
+  --popover: oklch(0.23 0.017 250);
+  --popover-foreground: oklch(0.93 0.012 85);
+  --primary: oklch(0.92 0.022 85);
+  --primary-foreground: oklch(0.19 0.018 250);
+  --secondary: oklch(0.26 0.017 250);
+  --secondary-foreground: oklch(0.93 0.012 85);
+  --muted: oklch(0.25 0.015 250);
+  --muted-foreground: oklch(0.68 0.014 250);
+  --accent: oklch(0.29 0.02 250);
+  --accent-foreground: oklch(0.93 0.012 85);
+  --destructive: oklch(0.63 0.2 25);
+  --destructive-foreground: oklch(0.98 0.005 85);
+  --border: oklch(0.31 0.016 250);
+  --input: oklch(0.31 0.016 250);
+  --ring: oklch(0.72 0.02 85);
+
+  --status-off: oklch(0.68 0.03 250);
+  --status-sleeper: oklch(0.66 0.15 285);
+  --status-driving: oklch(0.72 0.16 150);
+  --status-onduty: oklch(0.78 0.15 70);
+
+  --signal-ok: oklch(0.72 0.16 150);
+  --signal-warn: oklch(0.78 0.15 70);
+  --signal-danger: oklch(0.65 0.2 25);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-status-off: var(--status-off);
+  --color-status-sleeper: var(--status-sleeper);
+  --color-status-driving: var(--status-driving);
+  --color-status-onduty: var(--status-onduty);
+
+  --color-signal-ok: var(--signal-ok);
+  --color-signal-warn: var(--signal-warn);
+  --color-signal-danger: var(--signal-danger);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Every clock, duration and log total is a number that animates or updates in place.
+     Proportional digits make those values jitter horizontally as they change. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
