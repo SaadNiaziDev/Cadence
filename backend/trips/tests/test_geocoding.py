@@ -96,3 +96,19 @@ class ReverseTests(SimpleTestCase):
     def test_names_nearest_known_city_when_upstream_is_down(self, _get_json):
         # A point just outside Denver should still produce a usable remark.
         self.assertEqual(geocoding.reverse(39.70, -104.95), "near Denver, Co")
+
+    @patch("trips.services.geocoding.get_json")
+    def test_rural_point_names_the_nearest_city_not_a_county_subdivision(self, get_json):
+        # A rest stop on I-80 in Nebraska resolves only to an administrative division,
+        # which is accurate but is not what a driver writes in the remarks column.
+        get_json.return_value = {
+            "display_name": "Richland VIII Precinct, Colfax County, Nebraska, United States",
+            "address": {
+                "county": "Colfax County",
+                "state": "Nebraska",
+                "ISO3166-2-lvl4": "US-NE",
+            },
+        }
+        label = geocoding.reverse(41.12, -100.76)
+        self.assertNotIn("Precinct", label)
+        self.assertIn("North Platte", label)

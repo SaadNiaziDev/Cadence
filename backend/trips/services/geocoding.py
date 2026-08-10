@@ -142,6 +142,28 @@ class Place:
         return (self.longitude, self.latitude)
 
 
+def _populated_place(address: dict) -> str | None:
+    """Return the most specific inhabited place in a Nominatim address, if any.
+
+    Deliberately excludes county-level fields. Rural interstate mileposts resolve to
+    administrative divisions with names like "Richland VIII Precinct", which is accurate
+    but not how a driver writes a log remark.
+    """
+    for key in ("city", "town", "village", "hamlet", "municipality"):
+        value = address.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def _subdivision_code(address: dict) -> str:
+    """State code from the ISO 3166-2 field, falling back to the full state name."""
+    match = _ISO_SUBDIVISION.match(address.get("ISO3166-2-lvl4") or "")
+    if match:
+        return match.group(1)
+    return str(address.get("state", ""))
+
+
 def _short_label(entry: dict) -> str:
     """Collapse a Nominatim result into a "City, ST" label.
 
@@ -151,23 +173,9 @@ def _short_label(entry: dict) -> str:
     pairs it with the state code.
     """
     address = entry.get("address") or {}
-    locality = (
-        address.get("city")
-        or address.get("town")
-        or address.get("village")
-        or address.get("hamlet")
-        or address.get("municipality")
-        or address.get("county")
-        or entry.get("name")
-    )
+    locality = _populated_place(address) or address.get("county") or entry.get("name")
 
-    subdivision = ""
-    iso_code = address.get("ISO3166-2-lvl4") or ""
-    match = _ISO_SUBDIVISION.match(iso_code)
-    if match:
-        subdivision = match.group(1)
-    elif address.get("state"):
-        subdivision = str(address["state"])
+    subdivision = _subdivision_code(address)
 
     if locality and subdivision:
         return f"{locality}, {subdivision}"
@@ -264,8 +272,22 @@ def reverse(latitude: float, longitude: float) -> str:
     except UpstreamError:
         return _nearest_fallback_city(latitude, longitude)
 
-    if isinstance(payload, dict) and payload.get("display_name"):
-        return _short_label(payload)
+    if isinstance(payload, dict):
+        address = payload.get("address") or {}
+        town = _populated_place(address)
+        if town:
+            subdivision = _subdivision_code(address)
+            return f"{town}, {subdivision}" if subdivision else town
+
+        # Rest areas and fuel stops usually land between towns, where the only thing
+        # Nominatim can name is a county subdivision. Naming the nearest real city
+        # instead matches how remarks are actually written on a paper log.
+        state = _subdivision_code(address)
+        nearest = _nearest_fallback_city(latitude, longitude)
+        if state and state not in nearest:
+            return f"{nearest} ({state})"
+        return nearest
+
     return _nearest_fallback_city(latitude, longitude)
 
 
