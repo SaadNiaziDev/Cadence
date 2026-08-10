@@ -189,14 +189,14 @@ def _fallback_lookup(query: str) -> Place | None:
     normalised = " ".join(query.lower().replace(".", "").split())
     for key, (lat, lon) in US_CITY_FALLBACK.items():
         if normalised == key.replace(".", ""):
-            return Place(label=key.title(), latitude=lat, longitude=lon, source="fallback")
+            return Place(label=_fallback_label(key), latitude=lat, longitude=lon, source="fallback")
     # Also accept a bare city name when it is unambiguous in the table ("Chicago").
     matches = [
         (key, coords) for key, coords in US_CITY_FALLBACK.items() if key.split(",")[0].replace(".", "") == normalised
     ]
     if len(matches) == 1:
         key, (lat, lon) = matches[0]
-        return Place(label=key.title(), latitude=lat, longitude=lon, source="fallback")
+        return Place(label=_fallback_label(key), latitude=lat, longitude=lon, source="fallback")
     return None
 
 
@@ -282,11 +282,7 @@ def reverse(latitude: float, longitude: float) -> str:
         # Rest areas and fuel stops usually land between towns, where the only thing
         # Nominatim can name is a county subdivision. Naming the nearest real city
         # instead matches how remarks are actually written on a paper log.
-        state = _subdivision_code(address)
-        nearest = _nearest_fallback_city(latitude, longitude)
-        if state and state not in nearest:
-            return f"{nearest} ({state})"
-        return nearest
+        return _nearest_fallback_city(latitude, longitude)
 
     return _nearest_fallback_city(latitude, longitude)
 
@@ -301,10 +297,18 @@ def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> floa
     return 2 * earth_radius_miles * math.asin(math.sqrt(a))
 
 
+def _fallback_label(key: str) -> str:
+    """Format an offline-table key as a display label ("denver, co" -> "Denver, CO")."""
+    city, _, state = key.partition(",")
+    city = city.strip().title()
+    state = state.strip().upper()
+    return f"{city}, {state}" if state else city
+
+
 def _nearest_fallback_city(latitude: float, longitude: float) -> str:
     """Name the closest known city, so a stop never renders as an anonymous coordinate."""
     nearest_key = min(
         US_CITY_FALLBACK,
         key=lambda key: _haversine_miles(latitude, longitude, *US_CITY_FALLBACK[key]),
     )
-    return f"near {nearest_key.title()}"
+    return f"near {_fallback_label(nearest_key)}"

@@ -65,7 +65,7 @@ class SearchTests(SimpleTestCase):
     @patch("trips.services.geocoding.get_json", side_effect=UpstreamError())
     def test_fallback_accepts_bare_city_when_unambiguous(self, _get_json):
         places = geocoding.search("chicago")
-        self.assertEqual(places[0].label, "Chicago, Il")
+        self.assertEqual(places[0].label, "Chicago, IL")
 
     @patch("trips.services.geocoding.get_json", side_effect=UpstreamError())
     def test_fallback_rejects_ambiguous_bare_city(self, _get_json):
@@ -95,7 +95,7 @@ class ReverseTests(SimpleTestCase):
     @patch("trips.services.geocoding.get_json", side_effect=UpstreamError())
     def test_names_nearest_known_city_when_upstream_is_down(self, _get_json):
         # A point just outside Denver should still produce a usable remark.
-        self.assertEqual(geocoding.reverse(39.70, -104.95), "near Denver, Co")
+        self.assertEqual(geocoding.reverse(39.70, -104.95), "near Denver, CO")
 
     @patch("trips.services.geocoding.get_json")
     def test_rural_point_names_the_nearest_city_not_a_county_subdivision(self, get_json):
