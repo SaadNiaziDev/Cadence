@@ -19,11 +19,11 @@ def env_list(name: str, default: str = "") -> list[str]:
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-insecure-key-do-not-use-in-production")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.railway.app,.onrender.com")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,.railway.app")
 
-# Railway and Render serve the app behind a proxy that terminates TLS, so Django only
-# sees plain HTTP unless it is told to trust the forwarded protocol header.
-CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.railway.app,https://*.onrender.com")
+# Railway serves the app behind a proxy that terminates TLS, so Django only sees plain
+# HTTP unless it is told to trust the forwarded protocol header.
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.railway.app")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [

@@ -1,7 +1,9 @@
 {
+  "//": "Migrations run as preDeployCommand, never from a Procfile `release:` line: Nixpacks compiles `release:` into a build-layer RUN, and at build time the private network does not exist yet, so `postgres.railway.internal` cannot resolve and the build fails.",
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "NIXPACKS",
+    "buildCommand": "python manage.py collectstatic --noinput"
   },
   "deploy": {
     "preDeployCommand": "python manage.py migrate --noinput",

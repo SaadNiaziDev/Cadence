@@ -11,7 +11,7 @@ Built as a full-stack assessment for **[Spotter AI](https://spotter.ai)**. Not a
 | | |
 |---|---|
 | **Live app** | _not yet deployed — add the Vercel URL here_ |
-| **Live API** | _not yet deployed — add the Render URL here_ |
+| **Live API** | [cadence-api-production-b42d.up.railway.app](https://cadence-api-production-b42d.up.railway.app/api/health/) |
 | **Walkthrough** | _not yet recorded — add the Loom URL here_ |
 
 ![The planner: four clock gauges, a trip scrubber, every mandatory stop on the map, routes ranked by what they cost the driver, and the compliance rubric re-checked in the browser](docs/planner.jpg)
@@ -101,7 +101,7 @@ Three design decisions do most of the work:
 ## Architecture
 
 ```
-React (Vercel)  ──POST /api/trips/──▶  Django + DRF (Render)
+React (Vercel)  ──POST /api/trips/──▶  Django + DRF (Railway)
      │                                      │
   MapLibre GL + OpenFreeMap                 ├── services/geocoding.py   → Nominatim + offline US city fallback
   SVG log sheets                            ├── services/routing.py     → OSRM, alternatives, offline estimate
@@ -155,7 +155,8 @@ pnpm dev         # Django on :8000 and Vite on :5173, together
 | `pnpm test` | Backend test suite (147 tests) |
 | `pnpm lint` | Frontend lint |
 
-The individual halves can still be run on their own.
+<details>
+<summary>Running each half on its own</summary>
 
 **Backend** (Python 3.13):
 
@@ -181,6 +182,8 @@ pnpm dev
 
 App at `http://localhost:5173`.
 
+</details>
+
 > **Nominatim requires a real `UPSTREAM_USER_AGENT`** with contact details — it is a condition of their usage policy. Geocoding and routing responses are cached aggressively, and both fall back gracefully: a bundled US city table when Nominatim is unreachable, and great-circle estimation when OSRM is.
 
 ---
@@ -189,7 +192,10 @@ App at `http://localhost:5173`.
 
 The two halves deploy separately, because Vercel cannot run a long-lived Django process.
 
-**Frontend → Vercel.** `vercel.json` at the repository root already contains the monorepo build settings and the SPA rewrite that `/trip/:id` needs, so importing the repo is enough. To configure by hand instead:
+**Frontend → Vercel.** `vercel.json` at the repository root already contains the monorepo build settings and the SPA rewrite that `/trip/:id` needs, so importing the repo is enough. Set `VITE_API_URL` to the deployed backend URL.
+
+<details>
+<summary>Configuring Vercel by hand instead</summary>
 
 | Setting | Value |
 |---|---|
@@ -199,18 +205,27 @@ The two halves deploy separately, because Vercel cannot run a long-lived Django 
 | Build Command | `pnpm build` |
 | Output Directory | `dist` |
 
-Set `VITE_API_URL` to the deployed backend URL.
+</details>
 
-**Backend → Render or Railway.** `render.yaml` and `backend/Procfile` are both committed; Render picks up the blueprint, Railway reads the Procfile.
+**Backend → Railway.** `backend/railway.json` pins the build, the pre-deploy migration and the start command, so a deploy is:
+
+```bash
+cd backend
+railway link          # or `railway init` for a new project
+railway up
+```
+
+`ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` already default to `.railway.app`, so only these need setting:
 
 | Variable | Purpose |
 |---|---|
 | `DJANGO_SECRET_KEY` | Django signing key |
 | `DJANGO_DEBUG` | `false` in production |
-| `DJANGO_ALLOWED_HOSTS` | the deployed backend hostname |
 | `CORS_ALLOWED_ORIGINS` | the deployed frontend origin |
 | `UPSTREAM_USER_AGENT` | identifying string with contact details, required by Nominatim |
-| `DATABASE_URL` | set by the host; falls back to SQLite when absent |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}`; falls back to SQLite when absent |
+
+Postgres rather than the SQLite fallback matters here: a planned trip is persisted so it has a shareable `/trip/:id` URL, and a container filesystem does not survive a restart.
 
 CI runs the backend suite and the frontend typecheck, lint and build on every push — `.github/workflows/ci.yml`.
 
