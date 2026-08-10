@@ -6,7 +6,6 @@ import { AlertTriangle, Check, Clock, Info, Link2, Moon, Sun } from "lucide-reac
 import { ApiError } from "@/api/client";
 import { usePlanTrip, useTrip } from "@/api/trips";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -18,6 +17,8 @@ import { RouteComparison } from "@/features/routes/RouteComparison";
 import { Scrubber } from "@/features/scrubber/Scrubber";
 import { TripTimeline } from "@/features/timeline/TripTimeline";
 import { TripForm } from "@/features/trip/TripForm";
+import { WhatIfDeparture } from "@/features/trip/WhatIfDeparture";
+import { ComplianceVerdict } from "@/features/verdict/ComplianceVerdict";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDateTime, formatDuration, formatMiles } from "@/lib/hos";
 import { coordinateAtMiles, positionAt, tripStartMinute } from "@/lib/trip-position";
@@ -54,6 +55,7 @@ export default function App() {
   }, [shared.data]);
 
   const route: PlannedRoute | null = trip?.routes[selectedRoute] ?? trip?.routes[0] ?? null;
+  const tripRequest = useMemo(() => requestFor(trip), [trip]);
 
   // Switching to another route rewinds, because the same minute means something
   // different on a schedule with a different set of stops.
@@ -76,22 +78,23 @@ export default function App() {
     return upcoming?.ruleId ?? null;
   }, [route, position]);
 
-  function handleSubmit(request: TripRequest) {
-    plan.mutate(request, {
-      onSuccess: (result) => {
-        setTrip(result);
-        setSelectedRoute(result.selectedIndex);
-        setIsPlaying(false);
+  /** Show a freshly planned trip and put it at its own URL. */
+  function adoptTrip(result: Trip) {
+    setTrip(result);
+    setSelectedRoute(result.selectedIndex);
+    setIsPlaying(false);
 
-        if (result.id) {
-          // Seed the cache under the key the shared-trip query will look for, so putting
-          // the id in the URL does not send us straight back to the server for a payload
-          // we are already holding.
-          queryClient.setQueryData(["trip", result.id], result);
-          navigate(`/trip/${result.id}`);
-        }
-      },
-    });
+    if (result.id) {
+      // Seed the cache under the key the shared-trip query will look for, so putting the
+      // id in the URL does not send us straight back to the server for a payload we are
+      // already holding.
+      queryClient.setQueryData(["trip", result.id], result);
+      navigate(`/trip/${result.id}`);
+    }
+  }
+
+  function handleSubmit(request: TripRequest) {
+    plan.mutate(request, { onSuccess: adoptTrip });
   }
 
   return (
@@ -162,6 +165,8 @@ export default function App() {
               onHover={setHighlightedRoute}
             />
           )}
+
+          {trip && tripRequest && <WhatIfDeparture trip={trip} request={tripRequest} onApply={adoptTrip} />}
 
           {plan.isError && (
             <Alert variant="destructive">
@@ -277,40 +282,47 @@ function TripSummaryStats({ route }: { route: PlannedRoute }) {
         </div>
       ))}
 
-      {/* Outline Badge carrying the signal hue: the compliant/violating verdict has to read
-          as the same green and red the gauges and timeline use, not as a neutral chip. */}
-      {route.violations.length === 0 ? (
-        <Badge variant="outline" className="rounded-full border-signal-ok/40 bg-signal-ok/10 text-signal-ok">
-          Compliant — 0 violations
-        </Badge>
-      ) : (
-        <Badge variant="outline" className="rounded-full border-signal-danger/40 bg-signal-danger/10 text-signal-danger">
-          {route.violations.length} violations
-        </Badge>
-      )}
+      <ComplianceVerdict route={route} />
     </div>
   );
 }
 
 /**
- * The form values a loaded trip implies.
+ * The request that would reproduce a trip.
  *
  * The payload does not carry the request that produced it, but everything needed is
  * recoverable: the waypoint labels are the three locations, and the cycle hours a driver
- * entered are the cycle clock's reading before the first minute of the trip.
+ * entered are the cycle clock's reading before the first minute of the trip. That makes a
+ * shared link a fully working starting point — it can be re-planned and varied, not only
+ * read.
  */
-function formDefaultsFor(trip: Trip | null) {
-  if (!trip) return undefined;
+function requestFor(trip: Trip | null): TripRequest | null {
+  if (!trip) return null;
 
   const [current, pickup, dropoff] = trip.waypoints;
-  const cycleUsedMinutes = trip.routes[0]?.initialClocks?.cycleUsed ?? 0;
+  if (!current || !pickup || !dropoff) return null;
+
+  return {
+    current_location: current.label,
+    pickup_location: pickup.label,
+    dropoff_location: dropoff.label,
+    cycle_used_hours: (trip.routes[0]?.initialClocks?.cycleUsed ?? 0) / 60,
+    start_datetime: trip.startDateTime,
+    compare_routes: trip.routes.length > 1,
+  };
+}
+
+function formDefaultsFor(trip: Trip | null) {
+  const request = requestFor(trip);
+  if (!request || !trip) return undefined;
+
   const startedAt = new Date(trip.startDateTime);
 
   return {
-    current: current?.label ?? "",
-    pickup: pickup?.label ?? "",
-    dropoff: dropoff?.label ?? "",
-    cycleUsed: String(cycleUsedMinutes / 60),
+    current: request.current_location,
+    pickup: request.pickup_location,
+    dropoff: request.dropoff_location,
+    cycleUsed: String(request.cycle_used_hours),
     // Spread onto the form's initial state, so an unparseable timestamp has to omit the
     // key rather than carry undefined — which would blank the field instead of leaving
     // the "now" default in place.
