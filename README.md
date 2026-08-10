@@ -11,8 +11,8 @@ Built as a full-stack assessment for **[Spotter AI](https://spotter.ai)**. Not a
 | | |
 |---|---|
 | **Live app** | _not yet deployed — add the Vercel URL here_ |
-| **Live API** | [cadence-api-production-b42d.up.railway.app](https://cadence-api-production-b42d.up.railway.app/api/health/) |
 | **Walkthrough** | _not yet recorded — add the Loom URL here_ |
+| **Verify it yourself** | [docs/VERIFICATION.md](docs/VERIFICATION.md) — every case with expected results |
 
 ![The planner: four clock gauges, a trip scrubber, every mandatory stop on the map, routes ranked by what they cost the driver, and the compliance rubric re-checked in the browser](docs/planner.jpg)
 
@@ -119,6 +119,8 @@ PLAN.md     Full build plan, rule notes and design decisions
 ```
 
 ### API
+
+The browser only ever talks to the Vercel origin: `vercel.json` proxies `/api/*` through to the Django service, so the backend host is never in the shipped bundle and there is no cross-origin request to configure.
 
 | Endpoint | Purpose |
 |---|---|
