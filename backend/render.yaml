@@ -1,9 +1,23 @@
+# Render Blueprint. Import the repo at https://dashboard.render.com/blueprints and this
+# provisions the API and its database in one go.
+#
+# Note that Render ignores backend/Procfile when a blueprint is present, so the migration
+# step that lives in the Procfile's `release:` line has to be repeated here — without it
+# the trips table is never created and planning a trip fails on save.
+
+databases:
+  - name: cadence-db
+    plan: free
+    databaseName: cadence
+    user: cadence
+
 services:
   - type: web
-    name: fmcsa-hos-api
+    name: cadence-api
     runtime: python
+    plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     healthCheckPath: /api/health/
     envVars:
@@ -13,3 +27,16 @@ services:
         value: "false"
       - key: PYTHON_VERSION
         value: "3.13.1"
+      # Postgres rather than the SQLite fallback: a planned trip is persisted so it has a
+      # shareable /trip/:id URL, and Render's filesystem does not survive a restart.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cadence-db
+          property: connectionString
+      # Nominatim's usage policy requires a real identifying string with contact details.
+      # sync:false means Render asks for it at deploy time rather than committing it here.
+      - key: UPSTREAM_USER_AGENT
+        sync: false
+      # The deployed frontend origin, e.g. https://cadence.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
