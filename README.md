@@ -19,6 +19,29 @@ PLAN.md     Full build plan, rule notes and design decisions
 
 ## Running locally
 
+Both halves run from the repository root. First time:
+
+```bash
+pnpm install     # root tooling
+pnpm setup       # creates the backend venv, installs both dependency sets, migrates
+```
+
+Then:
+
+```bash
+pnpm dev         # Django on :8000 and Vite on :5173, together
+```
+
+| Script | What it does |
+|---|---|
+| `pnpm dev` | Runs API and web dev servers side by side with prefixed output |
+| `pnpm build` | Production build of the frontend into `frontend/dist` |
+| `pnpm start` | Serves the built frontend and runs the API under gunicorn |
+| `pnpm test` | Backend test suite |
+| `pnpm lint` | Frontend lint |
+
+The individual halves can still be run on their own.
+
 **Backend** (Python 3.13):
 
 ```bash
