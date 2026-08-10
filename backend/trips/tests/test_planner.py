@@ -156,6 +156,12 @@ class PayloadTests(SimpleTestCase):
         self.assertIn("warnings", self.payload)
         self.assertTrue(self.payload["routes"])
 
+    def test_initial_clocks_are_published_for_the_opening_gauge_reading(self):
+        payload = planner.to_payload(plan_with([route(2794.0, 2988)], cycle_used_hours=12.0))
+        initial = payload["routes"][0]["initialClocks"]
+        self.assertEqual(initial["cycleUsed"], 12 * 60)
+        self.assertEqual(initial["drivingUsed"], 0)
+
     def test_segments_carry_clock_snapshots_for_the_gauges(self):
         segment = self.payload["routes"][0]["segments"][0]
         self.assertIn("clocksAfter", segment)

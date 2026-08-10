@@ -120,6 +120,8 @@ export const plannedRouteSchema = z.object({
   geometry: z.array(z.tuple([z.number(), z.number()])),
   summary: routeSummarySchema,
   violations: z.array(z.string()),
+  /** Clock state before the trip begins; a driver with cycle hours used does not start at zero. */
+  initialClocks: clockSnapshotSchema.nullable().optional(),
   segments: z.array(segmentSchema),
   stops: z.array(stopSchema),
   logs: z.array(dailyLogSchema),

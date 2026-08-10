@@ -348,14 +348,27 @@ def _route_payload(entry: PlannedRoute, start_datetime: datetime) -> dict:
             "cycleUsedAtArrival": plan.segments[-1].clocks_after.cycle_used if plan.segments else 0,
         },
         "violations": plan.violations,
+        "initialClocks": _clocks_payload(plan.initial_clocks) if plan.initial_clocks else None,
         "segments": [_segment_payload(segment, at) for segment in plan.segments],
         "stops": [_stop_payload(stop, at) for stop in entry.stops],
         "logs": [_sheet_payload(sheet) for sheet in entry.sheets],
     }
 
 
+def _clocks_payload(clocks) -> dict:
+    return {
+        "drivingUsed": clocks.driving_used,
+        "drivingRemaining": clocks.driving_remaining,
+        "windowUsed": clocks.window_used,
+        "windowRemaining": clocks.window_remaining,
+        "breakDrivingUsed": clocks.break_driving_used,
+        "breakDrivingRemaining": clocks.break_driving_remaining,
+        "cycleUsed": clocks.cycle_used,
+        "cycleRemaining": clocks.cycle_remaining,
+    }
+
+
 def _segment_payload(segment: Segment, at) -> dict:
-    clocks = segment.clocks_after
     return {
         "status": segment.status.value,
         "startMinute": segment.start_minute,
@@ -367,16 +380,7 @@ def _segment_payload(segment: Segment, at) -> dict:
         "endMiles": round(segment.end_miles, 2),
         "ruleId": segment.rule_id,
         "label": segment.label,
-        "clocksAfter": {
-            "drivingUsed": clocks.driving_used,
-            "drivingRemaining": clocks.driving_remaining,
-            "windowUsed": clocks.window_used,
-            "windowRemaining": clocks.window_remaining,
-            "breakDrivingUsed": clocks.break_driving_used,
-            "breakDrivingRemaining": clocks.break_driving_remaining,
-            "cycleUsed": clocks.cycle_used,
-            "cycleRemaining": clocks.cycle_remaining,
-        },
+        "clocksAfter": _clocks_payload(segment.clocks_after),
     }
 
 

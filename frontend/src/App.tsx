@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Clock, Info, Moon, Sun } from "lucide-react";
 
 import { ApiError } from "@/api/client";
@@ -6,28 +6,58 @@ import { usePlanTrip } from "@/api/trips";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ClocksHud } from "@/features/hud/ClocksHud";
+import { Scrubber } from "@/features/scrubber/Scrubber";
+import { TripTimeline } from "@/features/timeline/TripTimeline";
 import { TripForm } from "@/features/trip/TripForm";
 import { useTheme } from "@/hooks/use-theme";
 import { formatDateTime, formatDuration, formatMiles } from "@/lib/hos";
-import type { Trip, TripRequest } from "@/types/hos";
+import { coordinateAtMiles, positionAt, tripStartMinute } from "@/lib/trip-position";
+import type { PlannedRoute, RuleId, Trip, TripRequest } from "@/types/hos";
 
 // MapLibre is by far the heaviest dependency here — about 270 kB gzipped — and nothing
 // needs it until a trip has actually been planned, so it is fetched only once there is a
-// route to draw. That keeps the form itself on a 47 kB entry chunk.
+// route to draw. That keeps the form itself on a much smaller entry chunk.
 const TripMap = lazy(() => import("@/features/map/TripMap").then((module) => ({ default: module.TripMap })));
 
 export default function App() {
   const { theme, toggle } = useTheme();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [selectedRoute, setSelectedRoute] = useState(0);
+  const [minute, setMinute] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const plan = usePlanTrip();
+  const route: PlannedRoute | null = trip?.routes[selectedRoute] ?? trip?.routes[0] ?? null;
+
+  // Switching to another route rewinds, because the same minute means something
+  // different on a schedule with a different set of stops.
+  useEffect(() => {
+    if (route) setMinute(tripStartMinute(route));
+  }, [route]);
+
+  const position = useMemo(() => (route ? positionAt(route, minute) : null), [route, minute]);
+
+  const vehiclePosition = useMemo(() => {
+    if (!route || !position) return null;
+    return coordinateAtMiles(route.geometry, route.distanceMiles, position.milesFromOrigin);
+  }, [route, position]);
+
+  // Which clock forces the next stop, so its gauge can be picked out while the driver is
+  // still approaching it.
+  const bindingRuleId = useMemo<RuleId | null>(() => {
+    if (!route || !position) return null;
+    const upcoming = route.segments.slice(position.segmentIndex + 1).find((segment) => segment.status !== "D");
+    return upcoming?.ruleId ?? null;
+  }, [route, position]);
 
   function handleSubmit(request: TripRequest) {
     plan.mutate(request, {
       onSuccess: (result) => {
         setTrip(result);
         setSelectedRoute(result.selectedIndex);
+        setIsPlaying(false);
       },
     });
   }
@@ -75,23 +105,51 @@ export default function App() {
           ))}
         </section>
 
-        <section className="min-h-[60vh] lg:min-h-0" aria-label="Route map">
+        <section className="min-h-[60vh] lg:min-h-0" aria-label="Planned trip">
           {plan.isPending ? (
-            <Skeleton className="size-full min-h-[60vh] rounded-lg" />
-          ) : trip ? (
-            <div className="flex h-full min-h-[60vh] flex-col gap-3">
-              <TripSummaryBar trip={trip} selectedRoute={selectedRoute} />
-              <div className="min-h-[50vh] flex-1">
-                <Suspense fallback={<Skeleton className="size-full rounded-lg" />}>
-                  <TripMap
-                    routes={trip.routes}
-                    selectedIndex={selectedRoute}
-                    waypoints={trip.waypoints}
-                    theme={theme}
-                    onSelectRoute={setSelectedRoute}
+            <PlanningSkeleton />
+          ) : route && trip && position ? (
+            <div className="flex h-full flex-col gap-3">
+              <TripSummaryBar route={route} />
+              <ClocksHud clocks={position.clocks} bindingRuleId={bindingRuleId} />
+              <Scrubber
+                route={route}
+                minute={minute}
+                isPlaying={isPlaying}
+                onMinuteChange={setMinute}
+                onPlayingChange={setIsPlaying}
+              />
+
+              <Tabs defaultValue="map" className="flex min-h-[55vh] flex-1 flex-col">
+                <TabsList>
+                  <TabsTrigger value="map">Map</TabsTrigger>
+                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="map" className="mt-3 min-h-[50vh] flex-1">
+                  <Suspense fallback={<Skeleton className="size-full rounded-lg" />}>
+                    <TripMap
+                      routes={trip.routes}
+                      selectedIndex={selectedRoute}
+                      waypoints={trip.waypoints}
+                      theme={theme}
+                      onSelectRoute={setSelectedRoute}
+                      vehiclePosition={vehiclePosition}
+                    />
+                  </Suspense>
+                </TabsContent>
+
+                <TabsContent value="timeline" className="mt-3 max-h-[60vh] flex-1 overflow-y-auto pr-1">
+                  <TripTimeline
+                    route={route}
+                    activeSegmentIndex={position.segmentIndex}
+                    onSelectMinute={(value) => {
+                      setIsPlaying(false);
+                      setMinute(value);
+                    }}
                   />
-                </Suspense>
-              </div>
+                </TabsContent>
+              </Tabs>
             </div>
           ) : (
             <EmptyState />
@@ -102,10 +160,17 @@ export default function App() {
   );
 }
 
-function TripSummaryBar({ trip, selectedRoute }: { trip: Trip; selectedRoute: number }) {
-  const route = trip.routes[selectedRoute] ?? trip.routes[0];
-  if (!route) return null;
+function PlanningSkeleton() {
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <Skeleton className="h-16 rounded-lg" />
+      <Skeleton className="h-24 rounded-lg" />
+      <Skeleton className="min-h-[50vh] flex-1 rounded-lg" />
+    </div>
+  );
+}
 
+function TripSummaryBar({ route }: { route: PlannedRoute }) {
   const stats = [
     { label: "Distance", value: formatMiles(route.distanceMiles) },
     { label: "Driving", value: formatDuration(route.summary.drivingMinutes) },

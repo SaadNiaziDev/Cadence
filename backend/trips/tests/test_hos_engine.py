@@ -245,3 +245,25 @@ class ComplianceSweepTests(SimpleTestCase):
     def test_total_driving_matches_the_route_regardless_of_stops(self):
         plan = simulate([leg(200), leg(1400)], cycle_used_minutes=30 * 60, start_minute=6 * 60)
         self.assertEqual(plan.driving_minutes, 1600)
+
+
+class InitialClockTests(SimpleTestCase):
+    """The state before departure, which the gauges read at minute zero."""
+
+    def test_initial_clocks_carry_the_cycle_hours_already_used(self):
+        plan = simulate([leg(0), leg(120)], cycle_used_minutes=12 * 60, start_minute=8 * 60)
+        assert plan.initial_clocks is not None
+        self.assertEqual(plan.initial_clocks.cycle_used, 12 * 60)
+        self.assertEqual(plan.initial_clocks.cycle_remaining, CYCLE_LIMIT_MINUTES - 12 * 60)
+
+    def test_the_daily_clocks_start_empty(self):
+        plan = simulate([leg(0), leg(120)], cycle_used_minutes=12 * 60, start_minute=8 * 60)
+        assert plan.initial_clocks is not None
+        self.assertEqual(plan.initial_clocks.driving_used, 0)
+        self.assertEqual(plan.initial_clocks.window_used, 0)
+        self.assertEqual(plan.initial_clocks.break_driving_used, 0)
+
+    def test_a_fresh_driver_starts_with_the_whole_cycle(self):
+        plan = simulate([leg(0), leg(120)], cycle_used_minutes=0, start_minute=0)
+        assert plan.initial_clocks is not None
+        self.assertEqual(plan.initial_clocks.cycle_remaining, CYCLE_LIMIT_MINUTES)

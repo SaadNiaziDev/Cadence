@@ -126,6 +126,10 @@ class TripPlan:
 
     segments: list[Segment] = field(default_factory=list)
     violations: list[str] = field(default_factory=list)
+    #: The clocks before the trip begins. A driver who has already used cycle hours does
+    #: not start from zero, and without this the interface has no reading to show for the
+    #: first minute of the trip or to interpolate the opening segment from.
+    initial_clocks: ClockSnapshot | None = None
 
     @property
     def total_minutes(self) -> int:
@@ -379,6 +383,7 @@ def simulate(
     the result can be sliced into calendar days by integer division alone.
     """
     simulator = HOSSimulator(start_minute=start_minute, cycle_used_minutes=cycle_used_minutes)
+    initial_clocks = simulator.snapshot()
 
     if include_inspections:
         simulator.work(INSPECTION_MINUTES, rules.RULE_INSPECTION, "Pre-trip inspection")
@@ -396,7 +401,7 @@ def simulate(
     if include_inspections:
         simulator.work(INSPECTION_MINUTES, rules.RULE_INSPECTION, "Post-trip inspection")
 
-    plan = TripPlan(segments=simulator.segments)
+    plan = TripPlan(segments=simulator.segments, initial_clocks=initial_clocks)
     plan.violations = list(find_violations(plan.segments))
     return plan
 
