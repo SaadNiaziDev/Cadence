@@ -1,3 +1,5 @@
+import { forwardRef } from "react";
+
 import { cn } from "@/lib/utils";
 import { MINUTES_PER_HOUR, PRESSURE_STROKE, PRESSURE_TEXT, formatDuration, pressureOf } from "@/lib/hos";
 
@@ -41,7 +43,12 @@ function arcPath(fraction: number): string {
   return `M ${startX} ${startY} A ${RADIUS} ${RADIUS} 0 0 1 ${endX} ${endY}`;
 }
 
-export function ClockGauge({ label, caption, usedMinutes, limitHours, isBinding, onClick }: ClockGaugeProps) {
+// forwardRef because every gauge is a PopoverTrigger's `asChild` target, and on React 18
+// a plain function component cannot receive the ref Radix needs to anchor the popover.
+export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(function ClockGauge(
+  { label, caption, usedMinutes, limitHours, isBinding, onClick },
+  ref,
+) {
   const limitMinutes = limitHours * MINUTES_PER_HOUR;
   const remaining = Math.max(limitMinutes - usedMinutes, 0);
   const pressure = pressureOf(usedMinutes, limitMinutes);
@@ -49,6 +56,7 @@ export function ClockGauge({ label, caption, usedMinutes, limitHours, isBinding,
 
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       title={caption}
@@ -89,4 +97,4 @@ export function ClockGauge({ label, caption, usedMinutes, limitHours, isBinding,
       <span className="text-[11px] font-medium">{label}</span>
     </button>
   );
-}
+});
