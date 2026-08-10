@@ -128,6 +128,101 @@ class AlternativesTests(SimpleTestCase):
         self.assertEqual(len(self.provider.route([CHICAGO, INDIANAPOLIS], alternatives=3)), 2)
 
 
+class ThreeWaypointAlternativesTests(SimpleTestCase):
+    """OSRM returns exactly one route when a request carries an intermediate waypoint.
+
+    Every trip here is current → pickup → dropoff, so without splitting the request the
+    planner would never have a second route to rank, and the whole comparison feature
+    would be unreachable in production while still passing two-waypoint tests.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.provider = routing.OSRMProvider()
+
+    @staticmethod
+    def _leg(miles, minutes):
+        return {"distance": miles * routing.METERS_PER_MILE, "duration": minutes * 60}
+
+    def _responses(self):
+        approach = osrm_payload(
+            [
+                osrm_route(
+                    100 * routing.METERS_PER_MILE,
+                    120 * 60,
+                    [[-87.6298, 41.8781], [-86.1581, 39.7684]],
+                    legs=[self._leg(100, 120)],
+                )
+            ]
+        )
+        loaded = osrm_payload(
+            [
+                osrm_route(
+                    400 * routing.METERS_PER_MILE,
+                    480 * 60,
+                    [[-86.1581, 39.7684], [-84.39, 33.75]],
+                    legs=[self._leg(400, 480)],
+                ),
+                osrm_route(
+                    460 * routing.METERS_PER_MILE,
+                    540 * 60,
+                    [[-86.1581, 39.7684], [-84.5, 35.0], [-84.39, 33.75]],
+                    legs=[self._leg(460, 540)],
+                ),
+            ]
+        )
+        return [approach, loaded]
+
+    @patch("trips.services.routing.get_json")
+    def test_alternatives_survive_an_intermediate_waypoint(self, get_json):
+        get_json.side_effect = self._responses()
+        routes = self.provider.route([CHICAGO, INDIANAPOLIS, COLUMBUS], alternatives=3)
+        self.assertEqual(len(routes), 2)
+
+    @patch("trips.services.routing.get_json")
+    def test_spliced_route_totals_both_halves(self, get_json):
+        get_json.side_effect = self._responses()
+        routes = self.provider.route([CHICAGO, INDIANAPOLIS, COLUMBUS], alternatives=3)
+        self.assertAlmostEqual(routes[0].distance_miles, 500.0, places=3)
+        self.assertEqual(routes[0].duration_minutes, 600)
+
+    @patch("trips.services.routing.get_json")
+    def test_spliced_route_keeps_two_legs_and_drops_the_shared_vertex(self, get_json):
+        get_json.side_effect = self._responses()
+        route = self.provider.route([CHICAGO, INDIANAPOLIS, COLUMBUS], alternatives=3)[0]
+
+        self.assertEqual(len(route.legs), 2)
+        self.assertAlmostEqual(route.legs[0].distance_miles, 100.0, places=3)
+        self.assertAlmostEqual(route.legs[1].distance_miles, 400.0, places=3)
+        # The pickup appears once, not twice: a duplicated vertex is a zero-length step
+        # that can put a stop on the wrong side of the pickup.
+        self.assertEqual(route.geometry.count((-86.1581, 39.7684)), 1)
+        self.assertEqual(route.legs[-1].geometry_end_index, len(route.geometry) - 1)
+
+    @patch("trips.services.routing.get_json")
+    def test_falls_back_to_one_combined_route_when_the_loaded_leg_has_no_choice(self, get_json):
+        single = osrm_payload(
+            [osrm_route(400 * routing.METERS_PER_MILE, 480 * 60, [[-86.1581, 39.7684], [-84.39, 33.75]])]
+        )
+        combined = osrm_payload(
+            [osrm_route(500 * routing.METERS_PER_MILE, 600 * 60, [[-87.6298, 41.8781], [-84.39, 33.75]])]
+        )
+        get_json.side_effect = [self._responses()[0], single, combined]
+
+        routes = self.provider.route([CHICAGO, INDIANAPOLIS, COLUMBUS], alternatives=3)
+        self.assertEqual(len(routes), 1)
+        self.assertAlmostEqual(routes[0].distance_miles, 500.0, places=3)
+
+    @patch("trips.services.routing.get_json")
+    def test_an_unreachable_router_still_yields_one_estimated_route(self, get_json):
+        get_json.side_effect = UpstreamError("down")
+        routes = self.provider.route([CHICAGO, INDIANAPOLIS, COLUMBUS], alternatives=3)
+        # A spliced trip built from a great-circle estimate would not be comparable with
+        # a real one, so the estimate is served whole rather than half-spliced.
+        self.assertEqual(len(routes), 1)
+        self.assertEqual(routes[0].source, "estimated")
+
+
 class FallbackTests(SimpleTestCase):
     def setUp(self):
         cache.clear()

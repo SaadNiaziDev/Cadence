@@ -80,14 +80,25 @@ class OSRMProvider:
         if len(waypoints) < 2:
             raise RoutingError("At least two waypoints are needed to plan a route.")
 
+        # OSRM only produces alternatives for a single origin-destination pair: ask for
+        # them on a request carrying an intermediate waypoint and it silently returns one
+        # route. A trip is always current → pickup → dropoff, so asking directly would
+        # mean this planner never had an alternative to compare, which is why the loaded
+        # leg is routed on its own and spliced onto the repositioning leg below.
+        if alternatives > 0 and len(waypoints) == 3:
+            spliced = self._alternatives_via_pickup(waypoints, alternatives)
+            if spliced:
+                return spliced
+
+        return self._request(waypoints, alternatives if len(waypoints) == 2 else 0)
+
+    def _request(self, waypoints: Sequence[Place], alternatives: int) -> list[Route]:
         coordinates = ";".join(f"{place.longitude},{place.latitude}" for place in waypoints)
         params: dict[str, object] = {
             "overview": "full",
             "geometries": "geojson",
             "steps": "false",
         }
-        # OSRM only offers alternatives for a single origin-destination pair; with an
-        # intermediate waypoint it silently returns one route, so asking is harmless.
         if alternatives > 0:
             params["alternatives"] = alternatives
 
@@ -111,6 +122,36 @@ class OSRMProvider:
         if not routes:
             raise RoutingError()
         return _deduplicate(routes)
+
+    def _alternatives_via_pickup(self, waypoints: Sequence[Place], alternatives: int) -> list[Route]:
+        """Route the loaded leg on its own so OSRM will offer choices, then reattach it.
+
+        Only the pickup → dropoff leg is asked for alternatives. The current → pickup leg
+        is a repositioning move that is usually short and never the part of a trip where a
+        different road changes the schedule, so every returned trip shares it — which also
+        keeps the comparison honest, since the routes differ in exactly one place.
+
+        Returns an empty list if this cannot be done, leaving the caller to fall back to a
+        single combined request rather than failing the whole plan.
+        """
+        origin, pickup, dropoff = waypoints
+
+        try:
+            approach = self._request([origin, pickup], 0)
+            loaded = self._request([pickup, dropoff], alternatives)
+        except RoutingError:
+            return []
+
+        if not approach or len(loaded) < 2:
+            return []
+
+        first = approach[0]
+        # A fallback estimate on either half would make the halves incomparable, and a
+        # spliced route built from one is worse than one honest combined route.
+        if first.source != "osrm" or any(route.source != "osrm" for route in loaded):
+            return []
+
+        return _deduplicate([_splice(first, route) for route in loaded])
 
 
 def _parse_osrm_route(entry: dict) -> Route | None:
@@ -149,6 +190,37 @@ def _parse_osrm_route(entry: dict) -> Route | None:
     return Route(
         distance_miles=distance_meters / METERS_PER_MILE,
         duration_minutes=round(duration_seconds / 60.0),
+        geometry=geometry,
+        legs=legs,
+    )
+
+
+def _splice(approach: Route, loaded: Route) -> Route:
+    """Join a current→pickup route to a pickup→dropoff route as one two-leg trip.
+
+    The pickup coordinate is the last point of the first geometry and the first point of
+    the second, so one copy is dropped — a duplicated vertex would show up as a zero-length
+    step and could place a stop at the wrong index.
+    """
+    geometry = approach.geometry + loaded.geometry[1:] if approach.geometry else list(loaded.geometry)
+    cumulative = cumulative_miles(geometry)
+
+    legs = [
+        RouteLeg(
+            distance_miles=approach.distance_miles,
+            duration_minutes=approach.duration_minutes,
+            geometry_end_index=index_at_miles(cumulative, approach.distance_miles),
+        ),
+        RouteLeg(
+            distance_miles=loaded.distance_miles,
+            duration_minutes=loaded.duration_minutes,
+            geometry_end_index=max(len(geometry) - 1, 0),
+        ),
+    ]
+
+    return Route(
+        distance_miles=approach.distance_miles + loaded.distance_miles,
+        duration_minutes=approach.duration_minutes + loaded.duration_minutes,
         geometry=geometry,
         legs=legs,
     )
