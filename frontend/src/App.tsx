@@ -102,22 +102,19 @@ export default function App() {
     // surface, so it claims whatever height is left instead of being pushed below the
     // fold by the panels above it. Each column scrolls on its own.
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      {/* The trip summary lives in the header rather than in its own row. The header had
-          empty space to spare and the map did not, and these are read-once figures that
-          do not need to sit beside the controls. */}
+      {/* Identity and account actions only. The trip figures used to live up here, which
+          put five 10px read-once numbers in the most prominent strip on the screen while
+          the four legal clocks — the thing a driver actually reads — sat below them at
+          half the size. They now sit on the tab row, at the altitude they deserve. */}
       <header className="shrink-0 border-b">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
-          <div className="flex items-center gap-3">
-            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Clock className="size-4" aria-hidden />
-            </span>
-            <div>
-              <h1 className="text-sm font-semibold leading-tight tracking-tight">HOS Trip Planner</h1>
-              <p className="text-[11px] leading-tight text-muted-foreground">49 CFR Part 395</p>
-            </div>
+        <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-2.5 sm:px-6">
+          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Clock className="size-5" aria-hidden />
+          </span>
+          <div>
+            <h1 className="text-base font-semibold leading-tight tracking-tight">Cadence</h1>
+            <p className="text-xs leading-tight text-muted-foreground">Hours of Service · 49 CFR Part 395</p>
           </div>
-
-          {route && <TripSummaryStats route={route} />}
 
           <div className="ml-auto flex items-center gap-1">
             {trip?.id && <ShareLinkButton />}
@@ -202,11 +199,22 @@ export default function App() {
               />
 
               <Tabs defaultValue="map" className="flex min-h-0 flex-1 flex-col">
-                <TabsList className="shrink-0 self-start">
-                  <TabsTrigger value="map">Map</TabsTrigger>
-                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                  <TabsTrigger value="logs">Log sheets</TabsTrigger>
-                </TabsList>
+                {/* Tabs and the read-once trip figures share one row: the figures are
+                    reference material, and this is the only strip on the screen with
+                    horizontal room to spare once the clocks are the right size. */}
+                <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2">
+                  <TabsList>
+                    <TabsTrigger value="map">Map</TabsTrigger>
+                    <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                    <TabsTrigger value="logs">Log sheets</TabsTrigger>
+                  </TabsList>
+
+                  <TripSummaryStats route={route} />
+
+                  <div className="ml-auto">
+                    <ComplianceVerdict route={route} />
+                  </div>
+                </div>
 
                 <TabsContent value="map" className="mt-2 min-h-[45vh] flex-1 lg:min-h-0">
                   <Suspense fallback={<Skeleton className="size-full rounded-lg" />}>
@@ -264,26 +272,32 @@ function PlanningSkeleton() {
   );
 }
 
+/**
+ * Arrival, distance and sheet count, as one inline sentence rather than a row of labelled
+ * columns.
+ *
+ * Five stacked label/value pairs read as a dashboard and competed with the clocks for
+ * attention. These are figures a dispatcher reads once when the plan lands, so they are set
+ * as running text at a size that is still legible — 13px, not the 10px they were — and
+ * arrival is the only one weighted, because it is the only one anybody quotes.
+ */
 function TripSummaryStats({ route }: { route: PlannedRoute }) {
-  const stats = [
-    { label: "Distance", value: formatMiles(route.distanceMiles) },
-    { label: "Driving", value: formatDuration(route.summary.drivingMinutes) },
-    { label: "Arrives", value: formatDateTime(route.summary.arrivalAt) },
-    { label: "Sheets", value: String(route.summary.dayCount) },
-    { label: "Stops", value: String(route.stops.length) },
-  ];
-
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 sm:border-l sm:pl-6">
-      {stats.map((stat) => (
-        <div key={stat.label}>
-          <p className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{stat.label}</p>
-          <p className="tabular text-sm font-medium leading-tight">{stat.value}</p>
-        </div>
-      ))}
-
-      <ComplianceVerdict route={route} />
-    </div>
+    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+      <span>
+        Arrives <span className="tabular font-semibold text-foreground">{formatDateTime(route.summary.arrivalAt)}</span>
+      </span>
+      <span aria-hidden>·</span>
+      <span className="tabular">{formatMiles(route.distanceMiles)}</span>
+      <span aria-hidden>·</span>
+      <span className="tabular">{formatDuration(route.summary.drivingMinutes)} driving</span>
+      <span aria-hidden>·</span>
+      <span className="tabular">
+        {route.summary.dayCount} {route.summary.dayCount === 1 ? "sheet" : "sheets"}
+      </span>
+      <span aria-hidden>·</span>
+      <span className="tabular">{route.stops.length} stops</span>
+    </p>
   );
 }
 

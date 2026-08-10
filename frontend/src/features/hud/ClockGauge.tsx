@@ -20,11 +20,24 @@ interface ClockGaugeProps {
   to sit inside it can be as long as "58h 31m" — wider than the interior of a ring small
   enough to fit four across. A semicircle is the same height while leaving the full
   diameter free for the reading, so the number never collides with the arc.
+
+  Sized for the real reading conditions rather than for the layout: this is the one panel a
+  driver checks at a glance in a moving cab, so the reading is set large and the arc is
+  thick enough to read as a bar from arm's length. Four of these fill the width of the
+  panel they sit in, which is also what stops the row looking like four small dials
+  marooned in a wide empty card.
+
+  The dial's width and the reading's size are coupled and cannot be tuned separately. The
+  longest value this has to hold is a cycle clock at "57h 45m", and the space available for
+  it is the arc's mouth — the diameter less the stroke on either side. At 170px wide that
+  mouth is about 117px, which a 30px reading overruns, and the digits then collide with the
+  arc at both ends. 220px buys a 152px mouth, which clears the same string at 26px with
+  room to spare.
 */
 const RADIUS = 40;
 const CENTER_X = 50;
-const CENTER_Y = 48;
-const STROKE = 8;
+const CENTER_Y = 46;
+const STROKE = 11;
 
 /** Half a circumference: the length of the full arc, used as the dash pattern. */
 const ARC_LENGTH = Math.PI * RADIUS;
@@ -57,16 +70,19 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
       ref={ref}
       type="button"
       onClick={onClick}
-      title={caption}
       aria-label={`${caption}. ${formatDuration(remaining)} remaining of ${limitHours} hours.`}
       className={cn(
-        "flex flex-col items-center gap-0.5 rounded-lg border px-2 py-1.5 transition-colors",
-        isBinding ? "border-ring bg-accent/40" : "border-transparent hover:border-border",
+        "group flex min-h-[44px] flex-col items-center gap-1 rounded-xl border px-3 py-2 transition-colors",
+        isBinding ? "border-ring bg-accent/50" : "border-transparent hover:bg-accent/30",
       )}
     >
-      <span className="relative block w-full max-w-[104px]">
+      {/* Label above the dial rather than below it: a driver scanning the row is looking
+          for a named clock first and its reading second, and the label is what they scan. */}
+      <span className="text-[13px] font-semibold leading-none">{label}</span>
+
+      <span className="relative block w-full max-w-[220px]">
         <svg
-          viewBox="0 0 100 56"
+          viewBox="0 0 100 52"
           className="w-full"
           role="meter"
           aria-valuenow={usedMinutes}
@@ -90,15 +106,32 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
         </svg>
 
         {/* Sits inside the arc's mouth, where the full diameter is available. */}
-        <span className="absolute inset-x-0 bottom-0 flex flex-col items-center">
-          <span className={cn("tabular whitespace-nowrap text-[13px] font-semibold leading-none", PRESSURE_TEXT[pressure])}>
+        <span className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-0.5">
+          <span
+            className={cn(
+              "tabular whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight",
+              PRESSURE_TEXT[pressure],
+            )}
+          >
             {formatDuration(remaining)}
           </span>
-          <span className="text-[9px] uppercase leading-none tracking-wide text-muted-foreground">left</span>
+          {/* "left of 11h" rather than a bare "left": the remaining figure only means
+              something against the limit it is counting down from, and printing the limit
+              beside the label as well just showed the same number twice at trip start. */}
+          <span className="text-[11px] leading-none text-muted-foreground">left of {limitHours}h</span>
         </span>
       </span>
 
-      <span className="text-[11px] font-medium">{label}</span>
+      {/* Reserved whether or not this clock is the binding one, so the row does not jolt
+          upward as the scrubber moves the constraint from one clock to another. */}
+      <span
+        className={cn(
+          "text-[11px] font-medium leading-none",
+          isBinding ? "text-signal-warn" : "invisible",
+        )}
+      >
+        Forces next stop
+      </span>
     </button>
   );
 });

@@ -21,10 +21,10 @@ interface ClocksHudProps {
  */
 export function ClocksHud({ clocks, bindingRuleId }: ClocksHudProps) {
   return (
-    // No CardHeader: the four gauges are self-labelling and the panel is height-critical,
-    // so a title row would cost more than it explains.
-    <Card className="shrink-0 gap-0 rounded-lg py-1.5 shadow-none">
-      <CardContent className="grid grid-cols-4 gap-1 px-2">
+    // No CardHeader: the four gauges are self-labelling, so a title row would cost height
+    // and explain nothing.
+    <Card className="shrink-0 gap-0 rounded-xl py-3 shadow-none">
+      <CardContent className="grid grid-cols-2 gap-2 px-3 sm:grid-cols-4">
         {CLOCKS.map((clock) => {
           const { used } = readClock(clocks, clock.key);
           return (

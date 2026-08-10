@@ -57,24 +57,30 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
     <Card className="shrink-0 gap-0 rounded-lg py-2 shadow-none">
       <CardContent className="flex flex-col gap-1.5 px-3">
         <div className="flex items-center gap-3">
+          {/* size-11 rather than the default icon button: 44px is the smallest target a
+              gloved hand can hit reliably, and this is the one control a driver uses while
+              the trip is playing. */}
           <Button
             type="button"
             size="icon"
             variant="secondary"
+            className="size-11 shrink-0 rounded-full"
             onClick={() => (atEnd ? (onMinuteChange(start), onPlayingChange(true)) : onPlayingChange(!isPlaying))}
             aria-label={isPlaying ? "Pause" : atEnd ? "Replay the trip" : "Play the trip"}
           >
-            {isPlaying ? <Pause /> : atEnd ? <RotateCcw /> : <Play />}
+            {isPlaying ? <Pause className="size-5" /> : atEnd ? <RotateCcw className="size-5" /> : <Play className="size-5" />}
           </Button>
 
-          <div className="tabular flex items-baseline gap-2">
-            <span className="text-base font-semibold">{formatClockTime(minute)}</span>
-            <span className="text-xs text-muted-foreground">
+          <div className="tabular flex items-baseline gap-2.5">
+            <span className="text-2xl font-semibold leading-none tracking-tight">{formatClockTime(minute)}</span>
+            <span className="text-[13px] text-muted-foreground">
               Day {dayNumber} · {formatDuration(elapsed)} in
             </span>
           </div>
 
-          <span className="ml-auto text-xs text-muted-foreground">{formatDuration(end - minute)} to go</span>
+          <span className="tabular ml-auto text-[13px] text-muted-foreground">
+            {formatDuration(end - minute)} to go
+          </span>
         </div>
 
         {/* The track is a duty-status strip, so the shape of the whole trip — driving,
@@ -84,8 +90,10 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
             replaced by the status strip, so Slider's track, range and thumb would all have
             to be hidden to get here. A transparent range over the strip is the smaller,
             more accessible construction. */}
-        <div className="relative">
-          <div className="flex h-5 w-full overflow-hidden rounded" aria-hidden>
+        {/* The strip is padded vertically so the invisible range input covering it clears
+            44px, without making the duty bands themselves that tall. */}
+        <div className="relative py-2">
+          <div className="flex h-7 w-full overflow-hidden rounded-md" aria-hidden>
             {route.segments.map((segment) => (
               <span
                 key={`${segment.startMinute}-${segment.ruleId}`}
@@ -97,7 +105,7 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
           </div>
 
           <span
-            className="pointer-events-none absolute -top-1 bottom-[-4px] w-0.5 bg-foreground shadow"
+            className="pointer-events-none absolute inset-y-0.5 w-1 rounded-full bg-foreground shadow-md ring-2 ring-background"
             style={{ left: `${((minute - start) / (end - start)) * 100}%` }}
             aria-hidden
           />
