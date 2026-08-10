@@ -53,7 +53,7 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
   const atEnd = minute >= end;
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+    <div className="shrink-0 space-y-1.5 rounded-lg border border-border bg-card px-3 py-2">
       <div className="flex items-center gap-3">
         <Button
           type="button"
@@ -66,7 +66,7 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
         </Button>
 
         <div className="tabular flex items-baseline gap-2">
-          <span className="text-lg font-semibold">{formatClockTime(minute)}</span>
+          <span className="text-base font-semibold">{formatClockTime(minute)}</span>
           <span className="text-xs text-muted-foreground">
             Day {dayNumber} · {formatDuration(elapsed)} in
           </span>
@@ -78,7 +78,7 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
       {/* The track is a duty-status strip, so the shape of the whole trip — driving,
           breaks, overnight rests — is readable before anything is scrubbed. */}
       <div className="relative">
-        <div className="flex h-6 w-full overflow-hidden rounded" aria-hidden>
+        <div className="flex h-5 w-full overflow-hidden rounded" aria-hidden>
           {route.segments.map((segment) => (
             <span
               key={`${segment.startMinute}-${segment.ruleId}`}

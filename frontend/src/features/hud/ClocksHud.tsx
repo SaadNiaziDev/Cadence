@@ -20,7 +20,7 @@ interface ClocksHudProps {
  */
 export function ClocksHud({ clocks, bindingRuleId }: ClocksHudProps) {
   return (
-    <div className="grid grid-cols-4 gap-1 rounded-lg border border-border bg-card p-2">
+    <div className="grid shrink-0 grid-cols-4 gap-1 rounded-lg border border-border bg-card px-2 py-1.5">
       {CLOCKS.map((clock) => {
         const { used } = readClock(clocks, clock.key);
         return (

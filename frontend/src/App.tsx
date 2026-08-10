@@ -63,27 +63,41 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    // A fixed-height shell rather than a growing document: the map is the primary
+    // surface, so it claims whatever height is left instead of being pushed below the
+    // fold by the panels above it. Each column scrolls on its own.
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* The trip summary lives in the header rather than in its own row. The header had
+          empty space to spare and the map did not, and these are read-once figures that
+          do not need to sit beside the controls. */}
+      <header className="shrink-0 border-b border-border">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Clock className="size-5" aria-hidden />
+            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Clock className="size-4" aria-hidden />
             </span>
             <div>
-              <h1 className="text-sm font-semibold tracking-tight">HOS Trip Planner</h1>
-              <p className="text-xs text-muted-foreground">Route and daily logs under 49 CFR Part 395</p>
+              <h1 className="text-sm font-semibold leading-tight tracking-tight">HOS Trip Planner</h1>
+              <p className="text-[11px] leading-tight text-muted-foreground">49 CFR Part 395</p>
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" onClick={toggle} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}>
+          {route && <TripSummaryStats route={route} />}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto"
+            onClick={toggle}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
             {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </Button>
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-[1600px] flex-1 gap-4 p-4 sm:px-6 lg:grid-cols-[380px_1fr]">
-        <section className="space-y-4" aria-label="Trip details">
+      <main className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 gap-4 overflow-y-auto p-4 sm:px-6 lg:grid-cols-[360px_1fr] lg:overflow-hidden">
+        <section className="space-y-4 lg:overflow-y-auto lg:pr-1" aria-label="Trip details">
           <div className="rounded-lg border border-border bg-card p-4">
             <TripForm onSubmit={handleSubmit} isPending={plan.isPending} />
           </div>
@@ -105,12 +119,11 @@ export default function App() {
           ))}
         </section>
 
-        <section className="min-h-[60vh] lg:min-h-0" aria-label="Planned trip">
+        <section className="flex min-h-[70vh] flex-col lg:min-h-0" aria-label="Planned trip">
           {plan.isPending ? (
             <PlanningSkeleton />
           ) : route && trip && position ? (
-            <div className="flex h-full flex-col gap-3">
-              <TripSummaryBar route={route} />
+            <div className="flex min-h-0 flex-1 flex-col gap-2.5">
               <ClocksHud clocks={position.clocks} bindingRuleId={bindingRuleId} />
               <Scrubber
                 route={route}
@@ -120,13 +133,13 @@ export default function App() {
                 onPlayingChange={setIsPlaying}
               />
 
-              <Tabs defaultValue="map" className="flex min-h-[55vh] flex-1 flex-col">
-                <TabsList>
+              <Tabs defaultValue="map" className="flex min-h-0 flex-1 flex-col">
+                <TabsList className="shrink-0 self-start">
                   <TabsTrigger value="map">Map</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="map" className="mt-3 min-h-[50vh] flex-1">
+                <TabsContent value="map" className="mt-2 min-h-[45vh] flex-1 lg:min-h-0">
                   <Suspense fallback={<Skeleton className="size-full rounded-lg" />}>
                     <TripMap
                       routes={trip.routes}
@@ -139,7 +152,7 @@ export default function App() {
                   </Suspense>
                 </TabsContent>
 
-                <TabsContent value="timeline" className="mt-3 max-h-[60vh] flex-1 overflow-y-auto pr-1">
+                <TabsContent value="timeline" className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
                   <TripTimeline
                     route={route}
                     activeSegmentIndex={position.segmentIndex}
@@ -162,49 +175,48 @@ export default function App() {
 
 function PlanningSkeleton() {
   return (
-    <div className="flex h-full flex-col gap-3">
-      <Skeleton className="h-16 rounded-lg" />
-      <Skeleton className="h-24 rounded-lg" />
-      <Skeleton className="min-h-[50vh] flex-1 rounded-lg" />
+    <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+      <Skeleton className="h-[86px] shrink-0 rounded-lg" />
+      <Skeleton className="h-20 shrink-0 rounded-lg" />
+      <Skeleton className="min-h-[45vh] flex-1 rounded-lg lg:min-h-0" />
     </div>
   );
 }
 
-function TripSummaryBar({ route }: { route: PlannedRoute }) {
+function TripSummaryStats({ route }: { route: PlannedRoute }) {
   const stats = [
     { label: "Distance", value: formatMiles(route.distanceMiles) },
     { label: "Driving", value: formatDuration(route.summary.drivingMinutes) },
     { label: "Arrives", value: formatDateTime(route.summary.arrivalAt) },
-    { label: "Log sheets", value: String(route.summary.dayCount) },
+    { label: "Sheets", value: String(route.summary.dayCount) },
     { label: "Stops", value: String(route.stops.length) },
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-border bg-card px-4 py-3">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-border sm:border-l sm:pl-6">
       {stats.map((stat) => (
         <div key={stat.label}>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{stat.label}</p>
-          <p className="tabular text-sm font-medium">{stat.value}</p>
+          <p className="text-[10px] uppercase leading-tight tracking-wide text-muted-foreground">{stat.label}</p>
+          <p className="tabular text-sm font-medium leading-tight">{stat.value}</p>
         </div>
       ))}
-      <div className="ml-auto">
-        {route.violations.length === 0 ? (
-          <span className="rounded-full border border-signal-ok/40 bg-signal-ok/10 px-3 py-1 text-xs font-medium text-signal-ok">
-            Compliant — 0 violations
-          </span>
-        ) : (
-          <span className="rounded-full border border-signal-danger/40 bg-signal-danger/10 px-3 py-1 text-xs font-medium text-signal-danger">
-            {route.violations.length} violations
-          </span>
-        )}
-      </div>
+
+      {route.violations.length === 0 ? (
+        <span className="rounded-full border border-signal-ok/40 bg-signal-ok/10 px-2.5 py-0.5 text-xs font-medium text-signal-ok">
+          Compliant — 0 violations
+        </span>
+      ) : (
+        <span className="rounded-full border border-signal-danger/40 bg-signal-danger/10 px-2.5 py-0.5 text-xs font-medium text-signal-danger">
+          {route.violations.length} violations
+        </span>
+      )}
     </div>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="flex size-full min-h-[60vh] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-8 text-center">
+    <div className="flex size-full flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border p-8 text-center">
       <Clock className="size-8 text-muted-foreground" aria-hidden />
       <div className="max-w-sm space-y-1">
         <p className="text-sm font-medium">No trip planned yet</p>

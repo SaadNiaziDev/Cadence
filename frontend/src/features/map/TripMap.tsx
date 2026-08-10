@@ -12,6 +12,8 @@ import Map, {
 } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { Truck } from "lucide-react";
+
 import { RULE, formatClockTime, formatDuration, formatMiles } from "@/lib/hos";
 import { cn } from "@/lib/utils";
 import type { PlannedRoute, Stop, Waypoint } from "@/types/hos";
@@ -181,9 +183,14 @@ export function TripMap({
         ))}
 
         {vehiclePosition && (
-          <Marker longitude={vehiclePosition[0]} latitude={vehiclePosition[1]} anchor="center">
-            <span className="flex size-5 items-center justify-center rounded-full border-2 border-background bg-status-driving shadow-lg">
-              <span className="size-1.5 rounded-full bg-background" />
+          // Drawn above the stop pins and larger than them: this is the one marker that
+          // moves, and it has to stay findable while the scrubber runs.
+          <Marker longitude={vehiclePosition[0]} latitude={vehiclePosition[1]} anchor="center" style={{ zIndex: 10 }}>
+            <span className="relative flex size-8 items-center justify-center">
+              <span className="absolute inset-0 animate-ping rounded-full bg-status-driving/30" aria-hidden />
+              <span className="relative flex size-8 items-center justify-center rounded-full border-2 border-background bg-status-driving shadow-lg">
+                <Truck className="size-4 text-background" aria-hidden />
+              </span>
             </span>
           </Marker>
         )}
