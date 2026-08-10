@@ -112,3 +112,76 @@ class ReverseTests(SimpleTestCase):
         label = geocoding.reverse(41.12, -100.76)
         self.assertNotIn("Precinct", label)
         self.assertIn("North Platte", label)
+
+
+class SuggestTests(SimpleTestCase):
+    """Type-ahead comes from Photon, which handles partial words Nominatim does not."""
+
+    def setUp(self):
+        cache.clear()
+
+    PHOTON_RESPONSE = {
+        "features": [
+            {
+                "geometry": {"coordinates": [-104.9847, 39.7392]},
+                "properties": {"name": "Denver", "state": "Colorado", "country": "United States"},
+            },
+            {
+                "geometry": {"coordinates": [-104.6737, 39.8561]},
+                "properties": {
+                    "name": "Denver International Airport",
+                    "city": "Denver",
+                    "state": "CO",
+                    "country": "United States",
+                },
+            },
+        ]
+    }
+
+    @patch("trips.services.geocoding.get_json")
+    def test_a_partial_word_returns_the_city_first(self, get_json):
+        get_json.return_value = self.PHOTON_RESPONSE
+        results = geocoding.suggest("denv")
+        self.assertEqual(results[0].label, "Denver, CO")
+        self.assertEqual(results[0].source, "photon")
+
+    @patch("trips.services.geocoding.get_json")
+    def test_full_state_names_are_reduced_to_codes(self, get_json):
+        get_json.return_value = self.PHOTON_RESPONSE
+        self.assertEqual(geocoding.suggest("denv")[0].label, "Denver, CO")
+
+    @patch("trips.services.geocoding.get_json")
+    def test_a_named_place_inside_a_city_keeps_its_own_name(self, get_json):
+        get_json.return_value = self.PHOTON_RESPONSE
+        self.assertEqual(geocoding.suggest("denv")[1].label, "Denver International Airport, Denver, CO")
+
+    @patch("trips.services.geocoding.get_json")
+    def test_features_without_coordinates_are_skipped(self, get_json):
+        get_json.return_value = {"features": [{"properties": {"name": "Nowhere"}}]}
+        self.assertEqual(geocoding.suggest("nowhere"), [])
+
+    def test_a_one_character_query_never_reaches_the_service(self):
+        with patch("trips.services.geocoding.get_json") as get_json:
+            self.assertEqual(geocoding.suggest("d"), [])
+        get_json.assert_not_called()
+
+    @patch("trips.services.geocoding.get_json", side_effect=UpstreamError())
+    def test_falls_back_to_nominatim_when_photon_is_down(self, _get_json):
+        # Both services are patched out, so this exercises the fallback path reaching
+        # the offline city table rather than returning nothing at all.
+        results = geocoding.suggest("denver, co")
+        self.assertEqual(results[0].source, "fallback")
+
+    @patch("trips.services.geocoding.get_json")
+    def test_duplicate_labels_are_collapsed(self, get_json):
+        # OpenStreetMap models a city as a node, a boundary and a metro area, so the raw
+        # response repeats it. The list a driver sees must not.
+        get_json.return_value = {
+            "features": [
+                {"geometry": {"coordinates": [-87.6, 41.9]}, "properties": {"name": "Chicago", "state": "Illinois"}},
+                {"geometry": {"coordinates": [-87.7, 41.8]}, "properties": {"name": "Chicago", "state": "Illinois"}},
+                {"geometry": {"coordinates": [-87.6, 41.5]}, "properties": {"name": "Chicago Heights", "state": "Illinois"}},
+            ]
+        }
+        labels = [place.label for place in geocoding.suggest("chicag")]
+        self.assertEqual(labels, ["Chicago, IL", "Chicago Heights, IL"])

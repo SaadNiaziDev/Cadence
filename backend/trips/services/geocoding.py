@@ -9,19 +9,24 @@ backs up the live service for the common case.
 from __future__ import annotations
 
 import logging
-import math
 import re
 from dataclasses import dataclass
 
 from django.conf import settings
 
 from .errors import GeocodingError, UpstreamError
+from .geo import haversine_miles
 from .upstream import get_json, register_rate_limit
 
 logger = logging.getLogger(__name__)
 
 NOMINATIM_KEY = "nominatim"
 register_rate_limit(NOMINATIM_KEY, 1.1)
+
+PHOTON_KEY = "photon"
+# Photon publishes no hard rate limit, but it is a free community service and a
+# type-ahead field is the one thing capable of hammering it.
+register_rate_limit(PHOTON_KEY, 0.2)
 
 # Cached for a week: a city does not move, and this is the single hottest upstream call.
 _GEOCODE_CACHE_SECONDS = 60 * 60 * 24 * 7
@@ -124,6 +129,30 @@ US_CITY_FALLBACK: dict[str, tuple[float, float]] = {
 
 # Nominatim reports the subdivision as an ISO 3166-2 code such as "US-IL".
 _ISO_SUBDIVISION = re.compile(r"^[A-Z]{2}-([A-Z0-9]{1,3})$")
+
+# Photon returns states by full name, sometimes already abbreviated. A log sheet's
+# remarks column has room for a code, not for "Massachusetts".
+_STATE_CODES = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA",
+    "colorado": "CO", "connecticut": "CT", "delaware": "DE", "district of columbia": "DC",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID", "illinois": "IL",
+    "indiana": "IN", "iowa": "IA", "kansas": "KS", "kentucky": "KY", "louisiana": "LA",
+    "maine": "ME", "maryland": "MD", "massachusetts": "MA", "michigan": "MI",
+    "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT",
+    "nebraska": "NE", "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ",
+    "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND",
+    "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA",
+    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
+    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA",
+    "west virginia": "WV", "wisconsin": "WI", "wyoming": "WY",
+}
+
+
+def _state_code(value: str | None) -> str:
+    """Normalise a state name to its two-letter code, passing codes through unchanged."""
+    if not value:
+        return ""
+    return _STATE_CODES.get(value.strip().lower(), value.strip())
 
 
 @dataclass(frozen=True)
@@ -241,6 +270,73 @@ def search(query: str, limit: int = 5) -> list[Place]:
     return results
 
 
+def suggest(query: str, limit: int = 5) -> list[Place]:
+    """Type-ahead suggestions for the location fields.
+
+    Backed by Photon rather than Nominatim because the two are built for different jobs:
+    Nominatim resolves a complete address well but returns almost nothing for a partial
+    word like "denv", which is precisely what a field sends on every keystroke. Photon
+    indexes the same OpenStreetMap data for prefix search and ranks Denver, Colorado
+    first. Nominatim remains the authority once a location is actually chosen.
+    """
+    query = query.strip()
+    if len(query) < 2:
+        return []
+
+    try:
+        payload = get_json(
+            PHOTON_KEY,
+            f"{settings.PHOTON_BASE_URL}/api/",
+            {"q": query, "limit": limit, "lang": "en"},
+            cache_timeout=_GEOCODE_CACHE_SECONDS,
+        )
+    except UpstreamError:
+        logger.info("Photon unavailable; falling back to Nominatim for suggestions.")
+        return search(query, limit=limit)
+
+    results: list[Place] = []
+    # OpenStreetMap holds a city as several objects — a node, a boundary relation, a
+    # metropolitan area — so a plain query returns "Chicago, IL" three times. Photon
+    # ranks the best one first, so keeping the first of each label is enough.
+    seen_labels: set[str] = set()
+
+    for feature in (payload or {}).get("features", []):
+        properties = feature.get("properties") or {}
+        coordinates = (feature.get("geometry") or {}).get("coordinates") or []
+        if len(coordinates) != 2:
+            continue
+
+        locality = properties.get("city") or properties.get("name")
+        if not locality:
+            continue
+
+        state = _state_code(properties.get("state"))
+        label = f"{locality}, {state}" if state else str(locality)
+        # A named feature inside a city ("Denver Art Museum") is a legitimate destination,
+        # so keep its own name rather than collapsing it to the city it sits in.
+        if properties.get("city") and properties.get("name") and properties["name"] != properties["city"]:
+            label = f"{properties['name']}, {label}"
+
+        if label in seen_labels:
+            continue
+        seen_labels.add(label)
+
+        results.append(
+            Place(
+                label=label,
+                longitude=float(coordinates[0]),
+                latitude=float(coordinates[1]),
+                full_name=", ".join(
+                    part
+                    for part in (properties.get("name"), properties.get("city"), properties.get("state"), properties.get("country"))
+                    if part
+                ),
+                source="photon",
+            )
+        )
+    return results
+
+
 def geocode(query: str) -> Place:
     """Resolve a place name to a single best-match location, or raise GeocodingError."""
     candidates = search(query, limit=1)
@@ -287,16 +383,6 @@ def reverse(latitude: float, longitude: float) -> str:
     return _nearest_fallback_city(latitude, longitude)
 
 
-def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in miles between two coordinates."""
-    earth_radius_miles = 3958.8
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    d_phi = phi2 - phi1
-    d_lambda = math.radians(lon2 - lon1)
-    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
-    return 2 * earth_radius_miles * math.asin(math.sqrt(a))
-
-
 def _fallback_label(key: str) -> str:
     """Format an offline-table key as a display label ("denver, co" -> "Denver, CO")."""
     city, _, state = key.partition(",")
@@ -309,6 +395,6 @@ def _nearest_fallback_city(latitude: float, longitude: float) -> str:
     """Name the closest known city, so a stop never renders as an anonymous coordinate."""
     nearest_key = min(
         US_CITY_FALLBACK,
-        key=lambda key: _haversine_miles(latitude, longitude, *US_CITY_FALLBACK[key]),
+        key=lambda key: haversine_miles(latitude, longitude, *US_CITY_FALLBACK[key]),
     )
     return f"near {_fallback_label(nearest_key)}"

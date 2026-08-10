@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.test import SimpleTestCase
 
-from trips.services import routing
+from trips.services import geo, routing
 from trips.services.errors import RoutingError, UpstreamError
 from trips.services.geocoding import Place
 
@@ -51,8 +51,8 @@ class ParseTests(SimpleTestCase):
         # Three collinear points roughly 100 miles apart; the first leg covers the first
         # half of the polyline, so its end index must land on the middle vertex.
         coordinates = [[-87.6298, 41.8781], [-86.1581, 39.7684], [-82.9988, 39.9612]]
-        first_leg_miles = routing._haversine_miles(41.8781, -87.6298, 39.7684, -86.1581)
-        second_leg_miles = routing._haversine_miles(39.7684, -86.1581, 39.9612, -82.9988)
+        first_leg_miles = geo.haversine_miles(41.8781, -87.6298, 39.7684, -86.1581)
+        second_leg_miles = geo.haversine_miles(39.7684, -86.1581, 39.9612, -82.9988)
         get_json.return_value = osrm_payload(
             [
                 osrm_route(

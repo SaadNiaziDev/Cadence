@@ -16,7 +16,8 @@ from typing import Protocol, Sequence
 from django.conf import settings
 
 from .errors import RoutingError, UpstreamError
-from .geocoding import Place, _haversine_miles
+from .geo import cumulative_miles, haversine_miles, index_at_miles
+from .geocoding import Place
 from .upstream import get_json, register_rate_limit
 
 logger = logging.getLogger(__name__)
@@ -128,7 +129,7 @@ def _parse_osrm_route(entry: dict) -> Route | None:
     # polyline recovers that index, which is what lets a stop be positioned on the right
     # side of the pickup.
     legs: list[RouteLeg] = []
-    cumulative = _cumulative_miles(geometry)
+    cumulative = cumulative_miles(geometry)
     travelled = 0.0
     for leg in entry.get("legs", []):
         try:
@@ -141,7 +142,7 @@ def _parse_osrm_route(entry: dict) -> Route | None:
             RouteLeg(
                 distance_miles=leg_miles,
                 duration_minutes=leg_minutes,
-                geometry_end_index=_index_at_miles(cumulative, travelled),
+                geometry_end_index=index_at_miles(cumulative, travelled),
             )
         )
 
@@ -151,24 +152,6 @@ def _parse_osrm_route(entry: dict) -> Route | None:
         geometry=geometry,
         legs=legs,
     )
-
-
-def _cumulative_miles(geometry: Sequence[tuple[float, float]]) -> list[float]:
-    """Running distance along the polyline, one entry per vertex."""
-    totals = [0.0]
-    for index in range(1, len(geometry)):
-        previous_lon, previous_lat = geometry[index - 1]
-        lon, lat = geometry[index]
-        totals.append(totals[-1] + _haversine_miles(previous_lat, previous_lon, lat, lon))
-    return totals
-
-
-def _index_at_miles(cumulative: Sequence[float], miles: float) -> int:
-    """First vertex index at or beyond a given distance along the polyline."""
-    for index, total in enumerate(cumulative):
-        if total >= miles:
-            return index
-    return max(len(cumulative) - 1, 0)
 
 
 def _deduplicate(routes: list[Route]) -> list[Route]:
@@ -203,7 +186,7 @@ def _estimated_route(waypoints: Sequence[Place]) -> Route:
 
     for index in range(1, len(waypoints)):
         start, end = waypoints[index - 1], waypoints[index]
-        miles = _haversine_miles(start.latitude, start.longitude, end.latitude, end.longitude)
+        miles = haversine_miles(start.latitude, start.longitude, end.latitude, end.longitude)
         miles *= _ROAD_CIRCUITY_FACTOR
         total_miles += miles
         legs.append(

@@ -131,6 +131,9 @@ CACHES = {
 # Upstream service configuration.
 NOMINATIM_BASE_URL = os.getenv("NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org")
 OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "https://router.project-osrm.org")
+# Photon is an OSM search index built for type-ahead. Nominatim answers "denver" well but
+# returns almost nothing for "denv", which is what an autocomplete field actually sends.
+PHOTON_BASE_URL = os.getenv("PHOTON_BASE_URL", "https://photon.komoot.io")
 # Nominatim's usage policy requires a real identifying User-Agent with contact details.
 UPSTREAM_USER_AGENT = os.getenv(
     "UPSTREAM_USER_AGENT",
