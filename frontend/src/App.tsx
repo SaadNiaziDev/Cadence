@@ -1,8 +1,10 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Clock, Info, Moon, Sun } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Check, Clock, Info, Link2, Moon, Sun } from "lucide-react";
 
 import { ApiError } from "@/api/client";
-import { usePlanTrip } from "@/api/trips";
+import { usePlanTrip, useTrip } from "@/api/trips";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,10 @@ const TripMap = lazy(() => import("@/features/map/TripMap").then((module) => ({ 
 
 export default function App() {
   const { theme, toggle } = useTheme();
+  const { tripId } = useParams<{ tripId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [trip, setTrip] = useState<Trip | null>(null);
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [minute, setMinute] = useState(0);
@@ -35,6 +41,18 @@ export default function App() {
   const [highlightedRoute, setHighlightedRoute] = useState<number | null>(null);
 
   const plan = usePlanTrip();
+  const shared = useTrip(tripId);
+
+  // A trip arriving from the URL adopts the ranking the planner chose, exactly as a
+  // freshly planned one does. Without this a shared link would always open on route A
+  // even when the sender had picked another.
+  useEffect(() => {
+    if (!shared.data) return;
+    setTrip(shared.data);
+    setSelectedRoute(shared.data.selectedIndex);
+    setIsPlaying(false);
+  }, [shared.data]);
+
   const route: PlannedRoute | null = trip?.routes[selectedRoute] ?? trip?.routes[0] ?? null;
 
   // Switching to another route rewinds, because the same minute means something
@@ -64,6 +82,14 @@ export default function App() {
         setTrip(result);
         setSelectedRoute(result.selectedIndex);
         setIsPlaying(false);
+
+        if (result.id) {
+          // Seed the cache under the key the shared-trip query will look for, so putting
+          // the id in the URL does not send us straight back to the server for a payload
+          // we are already holding.
+          queryClient.setQueryData(["trip", result.id], result);
+          navigate(`/trip/${result.id}`);
+        }
       },
     });
   }
@@ -90,15 +116,18 @@ export default function App() {
 
           {route && <TripSummaryStats route={route} />}
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto"
-            onClick={toggle}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-          >
-            {theme === "dark" ? <Sun /> : <Moon />}
-          </Button>
+          <div className="ml-auto flex items-center gap-1">
+            {trip?.id && <ShareLinkButton />}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            >
+              {theme === "dark" ? <Sun /> : <Moon />}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -112,7 +141,16 @@ export default function App() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-4">
-              <TripForm onSubmit={handleSubmit} isPending={plan.isPending} />
+              {/* Keyed on the trip so a shared link opens with the locations that were
+                  actually planned, rather than an empty form contradicting the header
+                  above it. Remounting is what applies the defaults, so a trip loaded
+                  mid-edit can never overwrite what someone is typing. */}
+              <TripForm
+                key={trip?.id ?? "new"}
+                onSubmit={handleSubmit}
+                isPending={plan.isPending}
+                defaults={formDefaultsFor(trip)}
+              />
             </CardContent>
           </Card>
 
@@ -143,8 +181,10 @@ export default function App() {
         </section>
 
         <section className="flex min-h-[70vh] flex-col lg:min-h-0" aria-label="Planned trip">
-          {plan.isPending ? (
+          {plan.isPending || (shared.isLoading && !trip) ? (
             <PlanningSkeleton />
+          ) : shared.isError && !trip ? (
+            <SharedTripMissing />
           ) : route && trip && position ? (
             <div className="flex min-h-0 flex-1 flex-col gap-2.5">
               <ClocksHud clocks={position.clocks} bindingRuleId={bindingRuleId} />
@@ -249,6 +289,83 @@ function TripSummaryStats({ route }: { route: PlannedRoute }) {
         </Badge>
       )}
     </div>
+  );
+}
+
+/**
+ * The form values a loaded trip implies.
+ *
+ * The payload does not carry the request that produced it, but everything needed is
+ * recoverable: the waypoint labels are the three locations, and the cycle hours a driver
+ * entered are the cycle clock's reading before the first minute of the trip.
+ */
+function formDefaultsFor(trip: Trip | null) {
+  if (!trip) return undefined;
+
+  const [current, pickup, dropoff] = trip.waypoints;
+  const cycleUsedMinutes = trip.routes[0]?.initialClocks?.cycleUsed ?? 0;
+  const startedAt = new Date(trip.startDateTime);
+
+  return {
+    current: current?.label ?? "",
+    pickup: pickup?.label ?? "",
+    dropoff: dropoff?.label ?? "",
+    cycleUsed: String(cycleUsedMinutes / 60),
+    // Spread onto the form's initial state, so an unparseable timestamp has to omit the
+    // key rather than carry undefined — which would blank the field instead of leaving
+    // the "now" default in place.
+    ...(Number.isNaN(startedAt.getTime())
+      ? {}
+      : {
+          startDateTime: new Date(startedAt.getTime() - startedAt.getTimezoneOffset() * 60_000)
+            .toISOString()
+            .slice(0, 16),
+        }),
+  };
+}
+
+/**
+ * Copies the current URL, which is the trip's permanent address once it has been planned.
+ *
+ * The plan is persisted server-side rather than encoded into the link, so the URL stays
+ * short enough to paste into a message and does not go stale if the payload shape changes.
+ */
+function ShareLinkButton() {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access is refused on insecure origins and in some embedded browsers.
+      // The URL is in the address bar either way, so there is nothing to recover from.
+    }
+  }
+
+  return (
+    <Button variant="ghost" size="sm" onClick={copy}>
+      {copied ? <Check className="text-signal-ok" /> : <Link2 />}
+      {copied ? "Copied" : "Share"}
+    </Button>
+  );
+}
+
+function SharedTripMissing() {
+  return (
+    <Empty className="size-full border">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Link2 aria-hidden />
+        </EmptyMedia>
+        <EmptyTitle className="text-base">That trip link is no longer available</EmptyTitle>
+        <EmptyDescription>
+          The plan behind this link could not be found. Enter the three locations on the left to plan it again — the
+          new trip gets a link of its own.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 

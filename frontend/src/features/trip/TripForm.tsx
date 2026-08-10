@@ -27,6 +27,12 @@ import { SAMPLE_TRIPS } from "./samples";
 interface TripFormProps {
   onSubmit: (request: TripRequest) => void;
   isPending: boolean;
+  /**
+   * Values to open with, used when a shared link supplies a trip that was planned
+   * elsewhere. Read once at mount — the caller remounts on a new trip id rather than
+   * pushing values in, so typing is never overwritten mid-edit.
+   */
+  defaults?: Partial<FormState>;
 }
 
 interface FormState {
@@ -58,7 +64,7 @@ const ADVICE_STYLES = {
   danger: { wrapper: "border-signal-danger/50 bg-signal-danger/10", icon: AlertTriangle, tint: "text-signal-danger" },
 } as const;
 
-export function TripForm({ onSubmit, isPending }: TripFormProps) {
+export function TripForm({ onSubmit, isPending, defaults }: TripFormProps) {
   const [form, setForm] = useState<FormState>({
     current: "",
     pickup: "",
@@ -66,6 +72,7 @@ export function TripForm({ onSubmit, isPending }: TripFormProps) {
     cycleUsed: "0",
     startDateTime: defaultStart(),
     compareRoutes: true,
+    ...defaults,
   });
   const [showErrors, setShowErrors] = useState(false);
 
