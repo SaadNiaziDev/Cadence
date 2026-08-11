@@ -6,6 +6,7 @@ import type { DailyLog, LogEntry } from "@/types/hos";
 
 import type { CarrierDetails } from "./carrier-details";
 import {
+  DUTY_STROKE,
   GRID,
   GRID_BOTTOM,
   GRID_TOP,
@@ -76,7 +77,7 @@ export const LogSheet = forwardRef<SVGSVGElement, LogSheetProps>(function LogShe
         d={path}
         fill="none"
         stroke="var(--sheet-ink)"
-        strokeWidth={2.5}
+        strokeWidth={DUTY_STROKE}
         strokeLinejoin="miter"
         strokeLinecap="butt"
         pointerEvents="none"
@@ -93,7 +94,7 @@ export const LogSheet = forwardRef<SVGSVGElement, LogSheetProps>(function LogShe
           x2={xForMinute(entry.endMinute)}
           y2={yForStatus(entry.status)}
           stroke={DUTY_STATUS[entry.status].cssVar}
-          strokeWidth={2.5}
+          strokeWidth={DUTY_STROKE}
           pointerEvents="none"
         />
       ))}

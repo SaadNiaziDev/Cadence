@@ -46,6 +46,17 @@ export const GRID_TOP = GRID.headerTop + GRID.headerHeight;
 export const HOUR_WIDTH = (GRID.right - GRID.left) / 24;
 export const QUARTER_WIDTH = HOUR_WIDTH / 4;
 
+/**
+ * Width of the duty line itself.
+ *
+ * It has to win against the form it is drawn on. The grid's hour rules are 1 unit and its
+ * quarter ticks 0.5, and at 2.5 the duty line read as just another rule in a dense grid —
+ * which defeats the point, since the line is the only part of the sheet a driver actually
+ * writes. Four and a half units is a little over an eighth of a row band: unmistakably the
+ * heaviest mark on the page, without swallowing the 15-minute ticks underneath it.
+ */
+export const DUTY_STROKE = 4.5;
+
 /** Form row order, which is fixed by the regulation: off duty, sleeper, driving, on duty. */
 export const ROW_ORDER = ["OFF", "SB", "D", "ON"] as const;
 
