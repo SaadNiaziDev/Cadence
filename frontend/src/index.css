@@ -172,6 +172,91 @@
 }
 
 /*
+  MapLibre ships its own chrome with hardcoded white backgrounds, and its stylesheet is
+  imported inside the lazily loaded map chunk — so it lands after this file and wins any
+  tie on source order. Every selector here is therefore qualified with the map container
+  to outrank it on specificity rather than order.
+*/
+.maplibregl-map .maplibregl-popup-content {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.45);
+  padding: 0.75rem;
+}
+
+.maplibregl-map .maplibregl-popup-close-button {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  padding: 0 0.35rem;
+}
+
+.maplibregl-map .maplibregl-popup-close-button:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* The tip is a CSS triangle, so its colour lives on whichever border faces the popup. */
+.maplibregl-map .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--popover);
+}
+
+.maplibregl-map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-map .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--popover);
+}
+
+.maplibregl-map .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--popover);
+}
+
+.maplibregl-map .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--popover);
+}
+
+.maplibregl-map .maplibregl-ctrl-group {
+  background: var(--popover);
+  border: 1px solid var(--border);
+}
+
+.maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--border);
+}
+
+.maplibregl-map .maplibregl-ctrl-group button:hover {
+  background: var(--accent);
+}
+
+.maplibregl-map .maplibregl-ctrl-scale {
+  background: color-mix(in oklch, var(--popover) 80%, transparent);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+/* The compact variant carries two classes of its own, so match it just as tightly. */
+.maplibregl-map .maplibregl-ctrl-attrib,
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact,
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  background: color-mix(in oklch, var(--popover) 85%, transparent);
+  color: var(--popover-foreground);
+}
+
+.maplibregl-map .maplibregl-ctrl-attrib a,
+.maplibregl-map .maplibregl-ctrl-attrib.maplibregl-compact a {
+  color: var(--popover-foreground);
+}
+
+/* MapLibre's control glyphs are black SVG data URIs with no colour hook. */
+.dark .maplibregl-map .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+.dark .maplibregl-map .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+
+/*
   The log sheet is a document, not a panel.
 
   Its ink, rules and paper are declared as their own variables so the print stylesheet can

@@ -16,6 +16,7 @@ import { LogSheets } from "@/features/logs/LogSheets";
 import { RouteComparison } from "@/features/routes/RouteComparison";
 import { Scrubber } from "@/features/scrubber/Scrubber";
 import { TripTimeline } from "@/features/timeline/TripTimeline";
+import { PlanningProgress } from "@/features/trip/PlanningProgress";
 import { TripForm } from "@/features/trip/TripForm";
 import { WhatIfDeparture } from "@/features/trip/WhatIfDeparture";
 import { ComplianceVerdict } from "@/features/verdict/ComplianceVerdict";
@@ -166,7 +167,7 @@ export default function App() {
 
         <section className="flex min-h-[70vh] flex-col lg:min-h-0" aria-label="Planned trip">
           {plan.isPending || (shared.isLoading && !trip) ? (
-            <PlanningSkeleton />
+            <PlanningProgress />
           ) : shared.isError && !trip ? (
             <SharedTripMissing />
           ) : route && trip && position ? (
@@ -241,15 +242,6 @@ export default function App() {
   );
 }
 
-function PlanningSkeleton() {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5">
-      <Skeleton className="h-[86px] shrink-0 rounded-lg" />
-      <Skeleton className="h-20 shrink-0 rounded-lg" />
-      <Skeleton className="min-h-[45vh] flex-1 rounded-lg lg:min-h-0" />
-    </div>
-  );
-}
 
 function TripSummaryStats({ route }: { route: PlannedRoute }) {
   return (
