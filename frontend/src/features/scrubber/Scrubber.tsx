@@ -15,18 +15,10 @@ interface ScrubberProps {
   onPlayingChange: (playing: boolean) => void;
 }
 
-/** Trip minutes advanced per second of playback: a five-day trip replays in about half a minute. */
+// Trip minutes per second of playback: a five-day trip replays in about half a minute.
 const MINUTES_PER_SECOND = 240;
 const FRAME_MS = 50;
 
-/**
- * One time cursor for the whole interface.
- *
- * The map marker, the clock gauges, the timeline and the log sheet all read from this
- * single minute. Driving them from one value is what makes the plan legible: a viewer
- * watches the gauges drain and sees the stop appear at the moment the clock that caused
- * it runs out, rather than being asked to trust that the numbers agree.
- */
 export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingChange }: ScrubberProps) {
   const start = route.segments[0]?.startMinute ?? 0;
   const end = route.segments[route.segments.length - 1]?.endMinute ?? 0;
@@ -57,9 +49,6 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
     <Card className="shrink-0 gap-0 rounded-lg py-2 shadow-none">
       <CardContent className="flex flex-col gap-1.5 px-3">
         <div className="flex items-center gap-3">
-          {/* size-11 rather than the default icon button: 44px is the smallest target a
-              gloved hand can hit reliably, and this is the one control a driver uses while
-              the trip is playing. */}
           <Button
             type="button"
             size="icon"
@@ -83,15 +72,8 @@ export function Scrubber({ route, minute, isPlaying, onMinuteChange, onPlayingCh
           </span>
         </div>
 
-        {/* The track is a duty-status strip, so the shape of the whole trip — driving,
-            breaks, overnight rests — is readable before anything is scrubbed.
-
-            This stays a native range input rather than a Slider: the control's own track is
-            replaced by the status strip, so Slider's track, range and thumb would all have
-            to be hidden to get here. A transparent range over the strip is the smaller,
-            more accessible construction. */}
-        {/* The strip is padded vertically so the invisible range input covering it clears
-            44px, without making the duty bands themselves that tall. */}
+        {/* A transparent native range sits over the duty-status strip; padding lifts its
+            hit area to 44px without making the bands that tall. */}
         <div className="relative py-2">
           <div className="flex h-7 w-full overflow-hidden rounded-md" aria-hidden>
             {route.segments.map((segment) => (

@@ -1,9 +1,7 @@
 """The Part 395 rules this planner enforces, as data.
 
-Every segment the engine emits is tagged with the id of the rule that caused it, and the
-frontend looks the explanation up here. Keeping the text beside the ids — rather than in
-the React components — is what stops the interface from explaining a rule the engine no
-longer applies the way it is described.
+Every segment the engine emits carries the id of the rule that caused it, and the frontend
+looks the explanation up here by that id.
 """
 
 from __future__ import annotations

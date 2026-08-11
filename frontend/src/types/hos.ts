@@ -1,12 +1,3 @@
-/**
- * The API contract, mirrored as types and as runtime schemas.
- *
- * `DutyStatus` and `RuleId` are string literal unions rather than plain strings on
- * purpose: the status-to-colour map and the rule-to-popover map are declared as
- * `Record<DutyStatus, …>` and `Record<RuleId, …>`, so adding a rule to the backend
- * catalog without wiring up its presentation fails the build instead of rendering a
- * blank tooltip at runtime.
- */
 
 import { z } from "zod";
 

@@ -1,8 +1,7 @@
 """Geometry helpers shared by the routing, geocoding and planning services.
 
-Everything here works on `(longitude, latitude)` pairs — GeoJSON order — because that is
-what OSRM returns and what MapLibre consumes, and converting between orders repeatedly is
-how coordinates end up silently transposed.
+All coordinates are `(longitude, latitude)` — GeoJSON order, as OSRM returns and MapLibre
+consumes. Mixing orders is how coordinates end up silently transposed.
 """
 
 from __future__ import annotations
@@ -49,9 +48,8 @@ def position_at_miles(
 ) -> Coordinate:
     """Interpolate the point that lies a given distance along the polyline.
 
-    Stops are placed by how far the driver has travelled, not by which vertex is nearest,
-    so a rest that falls between two shape points lands where it actually happened rather
-    than snapping to the closest bend in the road.
+    Stops are placed by distance travelled, not by nearest vertex, so a rest falling
+    between two shape points lands where it happened rather than snapping to a bend.
     """
     if not geometry:
         return (0.0, 0.0)
@@ -90,14 +88,8 @@ _MAX_INPUT_VERTICES = 4000
 def simplify(geometry: Sequence[Coordinate], tolerance_degrees: float = 0.0015) -> list[Coordinate]:
     """Reduce a polyline with Ramer-Douglas-Peucker, keeping its visible shape.
 
-    A cross-country OSRM route arrives with tens of thousands of vertices, most of which
-    describe lane-level detail invisible above street zoom. Sending them all would put a
-    megabyte of JSON on the wire for no visual gain. The default tolerance is roughly
-    150 metres, which typically removes around 90% of the points without a difference
-    that shows on screen.
-
-    Implemented with an explicit stack rather than recursion: at this vertex count the
-    recursive form can exceed Python's stack depth on a pathological route.
+    A cross-country OSRM route carries tens of thousands of vertices describing lane-level
+    detail invisible above street zoom. The default tolerance is roughly a street width.
     """
     if len(geometry) < 3:
         return list(geometry)

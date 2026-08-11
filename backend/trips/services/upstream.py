@@ -1,7 +1,7 @@
 """Shared HTTP plumbing for the free upstream services (Nominatim, OSRM).
 
-Both are community-run and rate limited, so every request made through here is cached,
-throttled and retried in one place rather than at each call site.
+Both are community-run and rate limited, so every request is cached, throttled and
+retried here rather than at each call site.
 """
 
 from __future__ import annotations
@@ -64,9 +64,8 @@ def get_json(
 ) -> Any:
     """GET a JSON document, serving from cache when possible.
 
-    Results are cached before they are returned because the answer for a given query is
-    stable — a city's coordinates and the road network between two points do not change
-    between page loads — and a cache hit costs the upstream service nothing.
+    Cached before returning: a city's coordinates and the road network between two points
+    are stable between page loads.
     """
     key = _cache_key(host_key, url, params)
     cached = cache.get(key)

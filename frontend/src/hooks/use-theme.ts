@@ -4,13 +4,6 @@ export type Theme = "dark" | "light";
 
 const STORAGE_KEY = "hos-theme";
 
-/**
- * Dark is the default rather than following the system.
- *
- * The usage context this interface is built for is a cab at night or a dispatch desk, and
- * the map style, the gauges and the duty-status palette are all tuned dark first. Light
- * mode exists mainly because it is what prints.
- */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);

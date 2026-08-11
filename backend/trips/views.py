@@ -22,11 +22,7 @@ def health(_request):
 
 @api_view(["GET"])
 def rule_catalog(_request):
-    """The regulations this planner enforces, in the words the interface shows.
-
-    Served rather than hard-coded in the frontend so that the explanation a driver reads
-    always comes from the same place as the ids the engine tags its segments with.
-    """
+    """The regulations this planner enforces, in the words the interface shows."""
     return Response({"rules": rules.as_dicts()})
 
 

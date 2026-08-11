@@ -6,10 +6,8 @@ from django.db import models
 class Trip(models.Model):
     """A planned trip, stored so it can be shared by link.
 
-    The planning itself is stateless — this table exists only so a finished plan has a
-    stable URL. The computed result is kept verbatim rather than recomputed on read,
-    because a shared link should show what the sender saw even if the road network or
-    the geocoder has since changed its mind.
+    The result is kept verbatim rather than recomputed on read, so a shared link shows
+    what the sender saw even if the road network or geocoder has since changed.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -1,13 +1,8 @@
 """Turns a trip plan into one FMCSA daily log sheet per calendar day.
 
-A paper log is a 24-hour grid, so every sheet must account for exactly 1,440 minutes —
-no gaps, no overlap, and the four status totals adding up to 24:00 exactly. That is the
-first thing a reviewer checks, and it is why the engine works in integer minutes: this
-module only has to slice and bucket, never to round.
-
-Times are kept in home-terminal local time for the whole trip, which is what 395.8(d)
-prescribes for the log sheet, and which keeps midnight in one place rather than moving it
-as the driver crosses time zones.
+Every sheet must account for exactly 1,440 minutes: no gaps, no overlap, four status
+totals summing to 24:00. Times stay in home-terminal local time for the whole trip, as
+395.8(d) prescribes, which keeps midnight in one place as the driver crosses time zones.
 """
 
 from __future__ import annotations

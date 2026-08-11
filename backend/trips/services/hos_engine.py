@@ -1,21 +1,10 @@
 """Hours of Service simulation for a property-carrying driver on the 70 hour / 8 day cycle.
 
-This module is deliberately pure: no HTTP, no database, no clock reads. It takes route
-legs and a starting cycle balance and returns the duty segments a compliant driver would
-record. That is what makes the rules testable in isolation, which matters more here than
-anywhere else in the codebase — the log sheets and the map are both just renderings of
-whatever this file decides.
+Pure: no HTTP, no database, no clock reads. Takes route legs and a starting cycle balance
+and returns the duty segments a compliant driver would record.
 
-Two conventions run through the whole module:
-
-*Integer minutes.* Every duration, limit and timestamp is a whole number of minutes,
-counted from midnight at the start of the trip's first calendar day. Floating point hours
-produce totals that fail to sum to exactly 24 and driving segments that overrun a limit by
-a rounding error, which reads as a compliance bug rather than an arithmetic one.
-
-*Distance travelled, not coordinates.* The engine records how far along the route each
-segment starts and ends. Turning that into a map position or a city name is the caller's
-job, so the rules stay independent of the routing and geocoding services.
+All times are integer minutes from the trip's first midnight. Float hours drift, and a
+sheet that totals 23.99 hours is a failed sheet.
 """
 
 from __future__ import annotations

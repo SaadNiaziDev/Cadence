@@ -20,13 +20,8 @@ function minutesFromDelivery(route: PlannedRoute, segment: Segment): number | nu
   return stop?.isNearDestination ? stop.minutesToDestination : null;
 }
 
-/**
- * Notes where the planner avoided a stop that a naive scheduler would have inserted.
- *
- * A one-hour loading stop is 30+ consecutive minutes not driving, so it already satisfies
- * the break rule. Saying so is worth more than silently not showing a break: it is the
- * difference between an app that looks like it forgot and one that visibly knows.
- */
+// A non-driving stop of 30+ minutes already satisfies the break rule (2020 amendment),
+// so no separate break is inserted after one. Flagged rather than left silent.
 function smartNote(segment: Segment, next: Segment | undefined): string | null {
   const satisfiesBreak =
     segment.status !== "D" && segment.durationMinutes >= 30 && segment.clocksAfter.breakDrivingUsed === 0;

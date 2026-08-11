@@ -1,10 +1,8 @@
 """Road routing between trip waypoints.
 
-Routing sits behind a small provider interface for one reason: OSRM's public demo server
-routes cars, not trucks — it ignores bridge clearances, weight limits and HGV bans. A
-production planner would swap in an HGV-aware engine, and the interface keeps that a
-drop-in change rather than a rewrite. OSRM is the only provider shipped here, and the
-limitation is stated openly in the README.
+OSRM's public demo routes cars, not trucks: it ignores bridge clearances, weight limits
+and HGV bans. The `RoutingProvider` interface keeps swapping in an HGV-aware engine a
+drop-in change.
 """
 
 from __future__ import annotations
@@ -248,9 +246,8 @@ def _deduplicate(routes: list[Route]) -> list[Route]:
 def _estimated_route(waypoints: Sequence[Place]) -> Route:
     """Last-resort route used when the router is unreachable.
 
-    Straight lines between waypoints, inflated by a road-circuity factor. Nowhere near
-    accurate enough to navigate by, but it keeps the HOS plan and the log sheets — which
-    are what this app is actually judged on — working when a shared demo server is down.
+    Straight lines between waypoints inflated by a road-circuity factor. Not accurate
+    enough to navigate by, but it keeps the HOS plan and log sheets working.
     """
     geometry = [place.lonlat for place in waypoints]
     legs: list[RouteLeg] = []

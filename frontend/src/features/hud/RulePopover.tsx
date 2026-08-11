@@ -9,14 +9,6 @@ interface RulePopoverProps {
   children: React.ReactNode;
 }
 
-/**
- * Explains the rule behind whatever it wraps — a gauge, a stop marker, a timeline row.
- *
- * The text comes from the backend rule catalog rather than from this file. That is the
- * point: the engine tags each segment with a rule id, and the explanation a driver reads
- * is looked up by that same id, so the interface cannot describe a rule the engine no
- * longer applies the way it is written here.
- */
 export function RulePopover({ ruleId, children }: RulePopoverProps) {
   const { data: rules } = useRules();
   const rule = rules?.[ruleId];

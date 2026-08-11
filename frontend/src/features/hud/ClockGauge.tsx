@@ -8,38 +8,20 @@ interface ClockGaugeProps {
   caption: string;
   usedMinutes: number;
   limitHours: number;
-  /** Highlights the clock that forced the next stop. */
   isBinding?: boolean;
   onClick?: () => void;
 }
 
-/*
-  A half-circle gauge, opening upward.
-
-  The obvious shape for a "clock" is a full or three-quarter ring, but the value that has
-  to sit inside it can be as long as "58h 31m" — wider than the interior of a ring small
-  enough to fit four across. A semicircle is the same height while leaving the full
-  diameter free for the reading, so the number never collides with the arc.
-
-  Sized for the real reading conditions rather than for the layout: this is the one panel a
-  driver checks at a glance in a moving cab, so the reading is set large and the arc is
-  thick enough to read as a bar from arm's length. Four of these fill the width of the
-  panel they sit in, which is also what stops the row looking like four small dials
-  marooned in a wide empty card.
-
-  The dial's width and the reading's size are coupled and cannot be tuned separately. The
-  longest value this has to hold is a cycle clock at "57h 45m", and the space available for
-  it is the arc's mouth — the diameter less the stroke on either side. At 170px wide that
-  mouth is about 117px, which a 30px reading overruns, and the digits then collide with the
-  arc at both ends. 220px buys a 152px mouth, which clears the same string at 26px with
-  room to spare.
-*/
+// Dial width and reading size are coupled. The longest value is a cycle clock at
+// "57h 45m", and the space for it is the arc's mouth: diameter less the stroke either
+// side. At 170px the mouth is ~117px and a 30px reading collides with the arc; 220px
+// gives ~152px, which clears the same string at 26px.
 const RADIUS = 40;
 const CENTER_X = 50;
 const CENTER_Y = 46;
 const STROKE = 11;
 
-/** Half a circumference: the length of the full arc, used as the dash pattern. */
+// Half a circumference: the full arc length, used as the dash pattern.
 const ARC_LENGTH = Math.PI * RADIUS;
 
 function polar(angleDegrees: number): [number, number] {
@@ -47,7 +29,7 @@ function polar(angleDegrees: number): [number, number] {
   return [CENTER_X + RADIUS * Math.cos(radians), CENTER_Y - RADIUS * Math.sin(radians)];
 }
 
-/** The whole arc, sweeping left (180°) to right (0°) across the top half. */
+// Sweeps left (180 deg) to right (0 deg) across the top half.
 function arcPath(): string {
   const [startX, startY] = polar(180);
   const [endX, endY] = polar(0);
@@ -76,8 +58,6 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
         isBinding ? "border-ring bg-accent/50" : "border-transparent hover:bg-accent/30",
       )}
     >
-      {/* Label above the dial rather than below it: a driver scanning the row is looking
-          for a named clock first and its reading second, and the label is what they scan. */}
       <span className="text-[13px] font-semibold leading-none">{label}</span>
 
       <span className="relative block w-full max-w-[220px]">
@@ -90,10 +70,8 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
           aria-valuemax={limitMinutes}
         >
           <path d={arcPath()} fill="none" strokeWidth={STROKE} strokeLinecap="round" className="stroke-muted" />
-          {/* One fixed path revealed by its dash offset, rather than a path whose `d` is
-              recomputed per frame. That is what lets a plain CSS transition ease the sweep
-              as the scrubber moves, and it removes the old zero-length special case too:
-              at full offset nothing is painted, so an unused clock draws no stray cap. */}
+          {/* One fixed path revealed by dash offset: a CSS transition can ease it, and at
+              full offset nothing paints, so an unused clock draws no stray round cap. */}
           <path
             d={arcPath()}
             fill="none"
@@ -105,7 +83,6 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
           />
         </svg>
 
-        {/* Sits inside the arc's mouth, where the full diameter is available. */}
         <span className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-0.5">
           <span
             className={cn(
@@ -115,15 +92,11 @@ export const ClockGauge = forwardRef<HTMLButtonElement, ClockGaugeProps>(functio
           >
             {formatDuration(remaining)}
           </span>
-          {/* "left of 11h" rather than a bare "left": the remaining figure only means
-              something against the limit it is counting down from, and printing the limit
-              beside the label as well just showed the same number twice at trip start. */}
           <span className="text-[11px] leading-none text-muted-foreground">left of {limitHours}h</span>
         </span>
       </span>
 
-      {/* Reserved whether or not this clock is the binding one, so the row does not jolt
-          upward as the scrubber moves the constraint from one clock to another. */}
+      {/* Space reserved either way so the row does not jolt as the binding clock changes. */}
       <span
         className={cn(
           "text-[11px] font-medium leading-none",

@@ -8,14 +8,8 @@ export interface CycleAdvice {
   detail: string;
 }
 
-/**
- * What the driver's remaining cycle hours mean, before they plan anything.
- *
- * This is the prevention idea in its smallest form. A driver who enters 69 hours is
- * about to plan a trip that opens with a day and a half of mandatory downtime, and the
- * moment to say so is while they are still typing — not after they have read a plan and
- * wondered why it starts with 34 hours parked.
- */
+// Cycle hours remaining, read before anything is planned: at 70 the driver cannot drive
+// at all until a 34-hour restart, and the thresholds below step down from there.
 export function adviseOnCycle(cycleUsedHours: number): CycleAdvice {
   const used = Number.isFinite(cycleUsedHours) ? Math.min(Math.max(cycleUsedHours, 0), CYCLE_LIMIT_HOURS) : 0;
   const remaining = Math.round((CYCLE_LIMIT_HOURS - used) * 10) / 10;

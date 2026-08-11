@@ -1,10 +1,3 @@
-/**
- * Presentation rules for Hours of Service data.
- *
- * The maps here are declared as `Record<DutyStatus | RuleId, …>`, which is what makes the
- * literal unions in `types/hos.ts` worth having: a new rule on the backend cannot reach
- * the interface without a matching entry, because the build stops first.
- */
 
 import {
   Bed,
@@ -126,12 +119,7 @@ export function readClock(snapshot: ClockSnapshot, key: ClockKey): { used: numbe
 
 export type Pressure = "ok" | "warn" | "danger";
 
-/**
- * How close a clock is to its limit.
- *
- * Amber at 80% is early enough that a driver can still act on it — there is time to find
- * a truck stop rather than being told about it at the moment it becomes illegal.
- */
+// Amber at 80% of the limit, red at 100%.
 export function pressureOf(used: number, limitMinutes: number): Pressure {
   if (limitMinutes <= 0) return "ok";
   const ratio = used / limitMinutes;

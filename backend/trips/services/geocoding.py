@@ -1,9 +1,7 @@
 """Place-name geocoding backed by Nominatim, with an offline fallback.
 
-Nominatim is free and keyless but community-run: it rate limits, and its public instance
-occasionally refuses traffic outright. A blank screen during a reviewer's first attempt
-would be worse than a slightly less precise answer, so a small table of major US cities
-backs up the live service for the common case.
+Nominatim is community-run: it rate limits and its public instance sometimes refuses
+traffic, so a table of major US cities backs it up.
 """
 
 from __future__ import annotations
@@ -196,10 +194,9 @@ def _subdivision_code(address: dict) -> str:
 def _short_label(entry: dict) -> str:
     """Collapse a Nominatim result into a "City, ST" label.
 
-    Log sheets have a narrow remarks column and the map markers are small, so the full
-    Nominatim display name ("Springfield, Sangamon County, Illinois, 62701, United
-    States") is unusable. This picks the most specific populated place available and
-    pairs it with the state code.
+    The full display name ("Springfield, Sangamon County, Illinois, 62701, United States")
+    does not fit a remarks column, so take the most specific populated place plus the
+    state abbreviation.
     """
     address = entry.get("address") or {}
     locality = _populated_place(address) or address.get("county") or entry.get("name")
@@ -273,11 +270,9 @@ def search(query: str, limit: int = 5) -> list[Place]:
 def suggest(query: str, limit: int = 5) -> list[Place]:
     """Type-ahead suggestions for the location fields.
 
-    Backed by Photon rather than Nominatim because the two are built for different jobs:
-    Nominatim resolves a complete address well but returns almost nothing for a partial
-    word like "denv", which is precisely what a field sends on every keystroke. Photon
-    indexes the same OpenStreetMap data for prefix search and ranks Denver, Colorado
-    first. Nominatim remains the authority once a location is actually chosen.
+    Photon rather than Nominatim: Nominatim returns almost nothing for a partial word like
+    "denv", which is exactly what a field sends on each keystroke. Photon indexes the same
+    OpenStreetMap data for prefix matching. Falls back to Nominatim when unavailable.
     """
     query = query.strip()
     if len(query) < 2:
@@ -348,9 +343,8 @@ def geocode(query: str) -> Place:
 def reverse(latitude: float, longitude: float) -> str:
     """Describe a coordinate as "City, ST" for log remarks and stop labels.
 
-    Zoom 10 asks Nominatim for city-level detail rather than a street address, which is
-    both the right granularity for a log sheet and far more likely to be cache-shared
-    between nearby stops on the same route.
+    Zoom 10 requests city-level detail rather than a street address, which is also more
+    likely to be cache-shared between nearby stops on the same route.
     """
     try:
         payload = get_json(

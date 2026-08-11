@@ -1,12 +1,5 @@
-/**
- * The parts of a log sheet a driver fills in by hand.
- *
- * Everything else on the sheet is computed from the trip, but these fields are not
- * derivable from anything the planner knows — and a sheet with the carrier, terminal and
- * shipping boxes left empty reads as a demo rather than as a filled log. They are kept in
- * local storage rather than on the trip so they survive re-planning, which matches how
- * they behave in practice: the truck and the carrier stay the same across loads.
- */
+// Driver-entered boxes, not derivable from the trip. Kept in local storage so they
+// survive re-planning.
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -46,9 +39,8 @@ function read(): CarrierDetails {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_CARRIER_DETAILS;
-    // Spread over the defaults rather than trusting the parsed object: a stored value from
-    // an older shape would otherwise leave fields undefined and render "undefined" onto
-    // the sheet.
+    // Spread over the defaults: a value stored under an older shape would otherwise leave
+    // fields undefined and render "undefined" onto the sheet.
     return { ...EMPTY_CARRIER_DETAILS, ...(JSON.parse(raw) as Partial<CarrierDetails>) };
   } catch {
     return EMPTY_CARRIER_DETAILS;
@@ -58,8 +50,7 @@ function read(): CarrierDetails {
 export function useCarrierDetails(): [CarrierDetails, (key: keyof CarrierDetails, value: string) => void] {
   const [details, setDetails] = useState<CarrierDetails>(EMPTY_CARRIER_DETAILS);
 
-  // Read after mount rather than in the initialiser so the first render does not depend on
-  // storage, which keeps this usable if the app is ever server-rendered.
+  // Read after mount so the first render does not depend on storage.
   useEffect(() => {
     setDetails(read());
   }, []);
@@ -70,7 +61,7 @@ export function useCarrierDetails(): [CarrierDetails, (key: keyof CarrierDetails
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {
-        // A private-mode browser refusing storage must not stop the driver typing.
+        // Private-mode browsers refuse storage; typing must still work.
       }
       return next;
     });

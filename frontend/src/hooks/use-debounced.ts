@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 
-/**
- * Trails a rapidly changing value by a fixed delay.
- *
- * Used to keep every keystroke in a location field from becoming a request to a free,
- * community-run geocoder.
- */
+// Keeps every keystroke from becoming a request to a rate-limited community geocoder.
 export function useDebounced<T>(value: T, delayMs = 300): T {
   const [debounced, setDebounced] = useState(value);
 

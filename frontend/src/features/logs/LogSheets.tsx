@@ -23,18 +23,11 @@ import { LogSheet } from "./LogSheet";
 
 interface LogSheetsProps {
   route: PlannedRoute;
-  /** Trip minute, counted from midnight of day one — the same cursor the scrubber drives. */
+  /** Trip minute, counted from midnight of day one. */
   minute: number;
   onSelectMinute: (minute: number) => void;
 }
 
-/**
- * The day's log sheets, as the fourth surface the scrubber drives.
- *
- * The visible sheet follows the time cursor across midnight on its own, because a driver
- * scrubbing into day three should not also have to change tabs to see the sheet they are
- * looking at. Selecting a day by hand still wins until the cursor next crosses a midnight.
- */
 export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
   const logs = route.logs;
   const [details, updateDetail] = useCarrierDetails();
@@ -100,13 +93,8 @@ export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
         />
       </div>
 
-      {/* Paper gets the whole set, one sheet per page. The screen never shows this copy.
-
-          Portalled to <body> rather than rendered here, because everything above it in the
-          tree is part of a 100vh flex shell: `main` is `overflow: hidden` and the tab panel
-          resolves to a few hundred pixels tall. Left in place, the sheets print clipped to
-          a single page inside that box. At body level they have the whole page to
-          themselves, and the print stylesheet hides the app shell around them. */}
+      {/* Portalled to <body>: every ancestor here is inside a 100vh flex shell with
+          `overflow: hidden`, which clips all N sheets to a single printed page. */}
       {createPortal(
         <div className="print-only">
           {logs.map((sheet) => (

@@ -1,12 +1,6 @@
-/**
- * Where the driver is, and what their clocks read, at any minute of the trip.
- *
- * The clock values are never recomputed here — they are read from the `clocksAfter`
- * snapshot the engine attached to each segment. Interpolating between two snapshots is
- * safe because every clock moves linearly within a segment; re-deriving them in
- * JavaScript would be a second implementation of the regulations, free to disagree with
- * the first.
- */
+// Clock values are read from the `clocksAfter` snapshot on each segment and interpolated,
+// never recomputed. Every clock moves linearly within a segment, so blending two snapshots
+// is exact.
 
 import type { ClockSnapshot, PlannedRoute, Segment } from "@/types/hos";
 
@@ -49,14 +43,8 @@ export function segmentIndexAt(segments: Segment[], minute: number): number {
   return minute < segments[0]!.startMinute ? 0 : segments.length - 1;
 }
 
-/**
- * Blend two clock snapshots.
- *
- * A snapshot is the state at the *end* of a segment, so the reading part way through one
- * lies between the previous segment's snapshot and this one. Without this the gauges
- * would jump a whole segment at a time instead of draining smoothly as the scrubber
- * moves.
- */
+// A snapshot is the state at the END of a segment, so a reading part way through lies
+// between the previous segment's snapshot and this one.
 function interpolateClocks(from: ClockSnapshot, to: ClockSnapshot, progress: number): ClockSnapshot {
   const mix = (a: number, b: number) => Math.round(a + (b - a) * progress);
   return {
@@ -97,13 +85,8 @@ export function positionAt(route: PlannedRoute, minute: number): TripPosition | 
   };
 }
 
-/**
- * Interpolate a map position from a distance along the route.
- *
- * The polyline sent to the browser is simplified, so its vertex spacing no longer matches
- * road distance exactly. Walking it by cumulative chord length and scaling to the route's
- * reported mileage keeps the truck marker on the line and roughly where it belongs.
- */
+// The polyline is simplified, so vertex spacing no longer matches road distance. Walk it
+// by cumulative chord length and scale by (polyline length / reported route mileage).
 export function coordinateAtMiles(
   geometry: [number, number][],
   totalMiles: number,

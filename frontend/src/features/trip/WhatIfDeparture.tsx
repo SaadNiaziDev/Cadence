@@ -19,18 +19,9 @@ interface WhatIfDepartureProps {
 
 const MAX_SHIFT_HOURS = 12;
 
-/**
- * What a different departure time would cost or save.
- *
- * Hours of Service is quantised around the 14-hour window, so leaving two hours earlier
- * routinely removes a whole overnight rest and a whole log sheet — a saving that is
- * invisible until someone tries it. This asks the same engine the same question with one
- * input changed, which is affordable because the simulation is pure and the geocoding and
- * routing behind it are already cached.
- *
- * The plan is requested on release rather than on every drag frame: each request persists
- * a trip, and a dragged slider would otherwise write a row per pixel.
- */
+// HOS is quantised around the 14-hour window, so a shift of a couple of hours can remove
+// a whole overnight rest and a whole log sheet. Re-planned on release, not per drag frame:
+// every request persists a trip.
 export function WhatIfDeparture({ trip, request, onApply }: WhatIfDepartureProps) {
   const [shiftHours, setShiftHours] = useState(0);
   const [preview, setPreview] = useState<Trip | null>(null);
@@ -179,13 +170,9 @@ function Delta({
   );
 }
 
-/**
- * The planned departure, moved by `hours`, in the format the API expects.
- *
- * The trip's own start time is the reference rather than the request's, because a request
- * that omitted `start_datetime` was planned from "now" on the server — shifting from an
- * absent value would silently re-anchor the comparison to the browser's clock.
- */
+// Anchored on the trip's own start, not the request's: a request that omitted
+// start_datetime was planned from "now" on the server, and shifting from an absent value
+// would re-anchor the comparison to the browser clock.
 function shiftedStart(request: TripRequest, trip: Trip, hours: number): string {
   const base = new Date(request.start_datetime ?? trip.startDateTime);
   const shifted = new Date(base.getTime() + hours * 60 * 60_000);

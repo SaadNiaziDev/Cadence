@@ -1,9 +1,3 @@
-/**
- * One-tap example trips.
- *
- * Each one exercises a different corner of the rules, so the interesting behaviour is
- * reachable without anyone having to guess which city pair triggers a restart.
- */
 export interface SampleTrip {
   name: string;
   why: string;

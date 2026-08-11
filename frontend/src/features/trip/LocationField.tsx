@@ -21,8 +21,7 @@ interface LocationFieldProps {
 export function LocationField({ id, label, placeholder, value, onChange, icon, error }: LocationFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  // Tracks whether the current value came from the list, so re-opening the menu after a
-  // pick does not fight the user.
+  // Suppresses the menu after a pick, so it does not immediately reopen on the new value.
   const [justPicked, setJustPicked] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -67,20 +66,13 @@ export function LocationField({ id, label, placeholder, value, onChange, icon, e
   const Icon = icon ?? MapPin;
 
   return (
-    // gap-1.5 rather than Field's default gap-3: the labels here are small uppercase
-    // captions, so at the stock gap an error message sits as far from the input it belongs
-    // to as from the next field's label, and the grouping stops reading.
     <Field className="gap-1.5" data-invalid={error ? true : undefined}>
       <FieldLabel htmlFor={id} className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </FieldLabel>
 
-      {/* The ref sits here rather than on Field because this element wraps both the control
-          and the menu — exactly the region a click has to land outside of to dismiss. */}
+      {/* Ref covers both the control and the menu: the region an outside click must miss. */}
       <div className="relative" ref={containerRef}>
-        {/* InputGroup owns the affordance slots either side of the control, so the icon and
-            the in-flight spinner sit in the border rather than being absolutely positioned
-            over a plain input. */}
         <InputGroup className="h-11">
           <InputGroupAddon align="inline-start">
             <Icon aria-hidden />
@@ -121,9 +113,8 @@ export function LocationField({ id, label, placeholder, value, onChange, icon, e
           >
             {suggestions.map((suggestion, index) => (
               <li key={`${suggestion.label}-${suggestion.longitude}`}>
-                {/* An option must stay a single focusable control, so the row is composed of
-                    spans rather than Item — Item's title and description slots are block
-                    elements and cannot legally nest inside a button. */}
+                {/* Spans, not Item: its title and description slots are block elements and
+                    cannot nest inside a button. */}
                 <button
                   type="button"
                   role="option"

@@ -1,7 +1,6 @@
 """Errors raised by the upstream geocoding and routing services.
 
-Each carries a message written for a driver rather than a developer, because these
-surface directly in the UI when Nominatim or OSRM is unavailable.
+Messages are written for a driver, not a developer: they surface directly in the UI.
 """
 
 

@@ -7,22 +7,11 @@ import { RulePopover } from "./RulePopover";
 
 interface ClocksHudProps {
   clocks: ClockSnapshot;
-  /** The rule that causes the next stop, so its gauge can be picked out. */
   bindingRuleId?: RuleId | null;
 }
 
-/**
- * The four legal clocks a driver carries at once.
- *
- * This is the interface's central claim: Hours of Service is not one rule but four
- * simultaneous countdowns, and whichever runs out first stops the truck. Every value
- * shown here comes from the engine's own snapshot for the scrubbed moment, so the gauges
- * cannot disagree with the plan they describe.
- */
 export function ClocksHud({ clocks, bindingRuleId }: ClocksHudProps) {
   return (
-    // No CardHeader: the four gauges are self-labelling, so a title row would cost height
-    // and explain nothing.
     <Card className="shrink-0 gap-0 rounded-xl py-3 shadow-none">
       <CardContent className="grid grid-cols-2 gap-2 px-3 sm:grid-cols-4">
         {CLOCKS.map((clock) => {

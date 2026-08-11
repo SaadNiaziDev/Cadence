@@ -1,19 +1,6 @@
-/**
- * Coordinates for the FMCSA Driver's Daily Log sheet, traced from
- * `resources/blank-paper-log.png`.
- *
- * This module is the single source of the sheet's geometry. The screen SVG, the print
- * stylesheet and the PDF export all render from these numbers rather than each plotting
- * the form themselves — two independent renderers of one form is how they drift apart.
- *
- * Everything is expressed in one user-space unit system sized to `SHEET.width` /
- * `SHEET.height`, and the SVG viewBox does the scaling. That keeps every constant below a
- * plain number rather than a percentage of something else, which is what makes the tick
- * arithmetic checkable by hand against the paper form.
- *
- * Pure arithmetic, no React and no DOM: the grid maths is easy to get subtly wrong and is
- * far easier to assert on directly than through a rendered component.
- */
+// Coordinates for the FMCSA Driver's Daily Log sheet, traced from
+// `resources/blank-paper-log.png`. All values are SVG user-space units against
+// SHEET.width / SHEET.height; the viewBox does the scaling.
 
 import type { DutyStatus } from "@/types/hos";
 
@@ -26,17 +13,11 @@ export const SHEET = {
   padding: 20,
 } as const;
 
-/**
- * The duty grid.
- *
- * `left` leaves room for the four row captions ("1. Off Duty" … "4. On Duty"), and the
- * strip between `right` and `totalsRight` is the form's "Total Hours" column.
- */
+// `left` clears the four row captions; `right`..`totalsRight` is the "Total Hours" column.
 export const GRID = {
   left: 132,
   right: 900,
   totalsRight: 980,
-  /** Top of the hour-label band that sits above the first status row. */
   headerTop: 372,
   headerHeight: 30,
   rowHeight: 34,
@@ -46,18 +27,11 @@ export const GRID_TOP = GRID.headerTop + GRID.headerHeight;
 export const HOUR_WIDTH = (GRID.right - GRID.left) / 24;
 export const QUARTER_WIDTH = HOUR_WIDTH / 4;
 
-/**
- * Width of the duty line itself.
- *
- * It has to win against the form it is drawn on. The grid's hour rules are 1 unit and its
- * quarter ticks 0.5, and at 2.5 the duty line read as just another rule in a dense grid —
- * which defeats the point, since the line is the only part of the sheet a driver actually
- * writes. Four and a half units is a little over an eighth of a row band: unmistakably the
- * heaviest mark on the page, without swallowing the 15-minute ticks underneath it.
- */
+// Grid rules are 1 unit and quarter ticks 0.5, so the duty line needs several times that
+// to stay the dominant mark. 4.5 is just over an eighth of a 34-unit row band.
 export const DUTY_STROKE = 4.5;
 
-/** Form row order, which is fixed by the regulation: off duty, sleeper, driving, on duty. */
+// Row order is fixed by the regulation: off duty, sleeper, driving, on duty.
 export const ROW_ORDER = ["OFF", "SB", "D", "ON"] as const;
 
 export const ROW_CAPTIONS: Record<DutyStatus, string> = {
@@ -69,13 +43,12 @@ export const ROW_CAPTIONS: Record<DutyStatus, string> = {
 
 export const GRID_BOTTOM = GRID_TOP + ROW_ORDER.length * GRID.rowHeight;
 
-/** X for a minute past this sheet's midnight. Clamped, because a sheet is exactly one day. */
+// Clamped: a sheet covers exactly one day.
 export function xForMinute(minute: number): number {
   const clamped = Math.max(0, Math.min(minute, MINUTES_PER_DAY));
   return GRID.left + (clamped / MINUTES_PER_DAY) * (GRID.right - GRID.left);
 }
 
-/** X for an hour gridline, 0 (midnight) through 24 (the following midnight). */
 export function xForHour(hour: number): number {
   return xForMinute(hour * MINUTES_PER_HOUR);
 }
@@ -88,17 +61,12 @@ export function rowTop(status: DutyStatus): number {
   return GRID_TOP + rowIndex(status) * GRID.rowHeight;
 }
 
-/** The line for a duty status is drawn down the middle of its band, as on the paper form. */
 export function yForStatus(status: DutyStatus): number {
   return rowTop(status) + GRID.rowHeight / 2;
 }
 
-/**
- * The hour labels across the top: midnight, 1–11, noon, 1–11, midnight.
- *
- * Twenty-five labels for twenty-four columns, because on the paper form they sit on the
- * gridlines rather than over the middle of each hour.
- */
+// 25 labels for 24 columns: on the paper form they sit on the gridlines, not over the
+// middle of each hour.
 export function hourLabels(): Array<{ hour: number; x: number; label: string; isAnchor: boolean }> {
   return Array.from({ length: 25 }, (_, hour) => {
     const isAnchor = hour === 0 || hour === 12 || hour === 24;
@@ -109,18 +77,13 @@ export function hourLabels(): Array<{ hour: number; x: number; label: string; is
 
 export interface Tick {
   x: number;
-  /** How far down from the top of a row band the tick reaches. */
   depth: number;
   isHour: boolean;
 }
 
-/**
- * The quarter-hour ticks inside one row band.
- *
- * The paper form marks every 15 minutes, with the half-hour drawn deeper than the
- * quarters so a driver can read a line's start and end to the nearest quarter without
- * counting marks. Hour boundaries are full-height rules and are drawn separately.
- */
+// 96 quarter-hour ticks per row. Depth encodes the subdivision so a start or end time is
+// readable to the nearest quarter: full height on the hour, half on the half-hour, 0.3
+// otherwise. Hour rules themselves are drawn separately.
 export function ticksForRow(): Tick[] {
   const ticks: Tick[] = [];
   for (let quarter = 0; quarter <= 96; quarter += 1) {
@@ -141,14 +104,8 @@ export interface DutyRun {
   endMinute: number;
 }
 
-/**
- * The duty line: horizontal runs at each status's row, joined by vertical connectors at
- * every change.
- *
- * Emitted as one path rather than a line per entry so the connectors are genuinely
- * continuous — a driver's log line never lifts off the page, and a gap here would read as
- * unaccounted time.
- */
+// One continuous path rather than a line per entry: a gap in the duty line would read as
+// unaccounted time.
 export function dutyPath(runs: readonly DutyRun[]): string {
   if (runs.length === 0) return "";
 
@@ -173,7 +130,6 @@ export function dutyPath(runs: readonly DutyRun[]): string {
   return parts.join(" ");
 }
 
-/** Header blocks above the grid, traced from the form's boxed fields. */
 export const HEADER = {
   title: { x: SHEET.padding, y: 46 },
   subtitle: { x: SHEET.padding, y: 66 },
@@ -188,7 +144,6 @@ export const HEADER = {
   terminalAddress: { x: 470, y: 252, width: 510, height: 40 },
 } as const;
 
-/** The remarks band under the grid, where each change of duty is named. */
 export const REMARKS = {
   x: 20,
   y: GRID_BOTTOM + 30,
@@ -197,7 +152,6 @@ export const REMARKS = {
   labelOffset: 18,
 } as const;
 
-/** Shipping-document fields down the left, below remarks. */
 export const SHIPPING = {
   x: 20,
   y: REMARKS.y + REMARKS.height + 12,
@@ -218,13 +172,8 @@ export const INSTRUCTIONS = {
   ],
 } as const;
 
-/**
- * The recap box.
- *
- * Only the 70-hour/8-day half is filled in — the assessment fixes the driver to that
- * cycle — but the 60-hour/7-day columns are still drawn, because they are on the real
- * form and a sheet missing half its recap does not read as a faithful trace.
- */
+// Only the 70-hour/8-day half is computed; the driver is fixed to that cycle. The
+// 60-hour/7-day columns are drawn but left blank.
 export const RECAP = {
   x: 20,
   y: INSTRUCTIONS.y + 30,

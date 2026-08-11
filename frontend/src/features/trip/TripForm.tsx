@@ -27,11 +27,7 @@ import { SAMPLE_TRIPS } from "./samples";
 interface TripFormProps {
   onSubmit: (request: TripRequest) => void;
   isPending: boolean;
-  /**
-   * Values to open with, used when a shared link supplies a trip that was planned
-   * elsewhere. Read once at mount — the caller remounts on a new trip id rather than
-   * pushing values in, so typing is never overwritten mid-edit.
-   */
+  /** Read once at mount; the caller remounts on a new trip id rather than pushing values in. */
   defaults?: Partial<FormState>;
 }
 
@@ -44,7 +40,7 @@ interface FormState {
   compareRoutes: boolean;
 }
 
-/** Now, rounded down to the minute, in the format a datetime-local input expects. */
+// Now, rounded down to the minute, in the format datetime-local expects.
 function defaultStart(): string {
   const now = new Date();
   now.setSeconds(0, 0);
@@ -52,12 +48,6 @@ function defaultStart(): string {
   return new Date(now.getTime() - offsetMinutes * 60_000).toISOString().slice(0, 16);
 }
 
-/*
-  The advice callout is an Alert, but its tint carries meaning the two stock variants do
-  not: "ok / warn / danger" is the same three-step pressure scale the clock gauges and the
-  timeline use, and it has to stay legible against them. Only the border and wash are
-  themed here — structure, spacing and typography come from Alert.
-*/
 const ADVICE_STYLES = {
   ok: { wrapper: "border-signal-ok/40 bg-signal-ok/10", icon: CircleCheck, tint: "text-signal-ok" },
   warn: { wrapper: "border-signal-warn/40 bg-signal-warn/10", icon: Info, tint: "text-signal-warn" },
@@ -179,8 +169,6 @@ export function TripForm({ onSubmit, isPending, defaults }: TripFormProps) {
           </Field>
         </FieldGroup>
 
-        {/* The prevention layer: the consequence of the cycle balance, while it is still
-            being typed rather than after a plan has been read. */}
         <Alert className={ADVICE_STYLES[advice.level].wrapper} aria-live="polite">
           <AdviceIcon className={ADVICE_STYLES[advice.level].tint} aria-hidden />
           <AlertTitle>{advice.headline}</AlertTitle>

@@ -18,20 +18,13 @@ import { RULE, formatClockTime, formatDuration, formatMiles } from "@/lib/hos";
 import { cn } from "@/lib/utils";
 import type { PlannedRoute, Stop, Waypoint } from "@/types/hos";
 
-// OpenFreeMap serves OpenStreetMap vector tiles with no key and no rate limit. The
-// attribution below is a condition of using it.
 const STYLES = {
   dark: "https://tiles.openfreemap.org/styles/dark",
   light: "https://tiles.openfreemap.org/styles/positron",
 } as const;
 
-// The OpenFreeMap styles already declare the required "OpenFreeMap © OpenMapTiles Data
-// from OpenStreetMap" credit on their tile source, and MapLibre renders it automatically.
-// Passing it again as customAttribution prints the whole line twice.
-
-// MapLibre paints with its own colour parser and cannot read the CSS custom properties
-// the rest of the interface uses, so the route colours are mirrored here as literals.
-// They must stay in step with the duty-status hues in index.css.
+// MapLibre cannot read CSS custom properties, so these mirror the duty-status hues in
+// index.css and must stay in step with them.
 const ROUTE_GREEN = "#35c48a";
 const ALTERNATIVE_GREY = "#8c93a3";
 
@@ -41,12 +34,7 @@ interface TripMapProps {
   waypoints: Waypoint[];
   theme: "dark" | "light";
   onSelectRoute: (index: number) => void;
-  /** Truck position along the selected route, from the scrubber. */
   vehiclePosition?: [number, number] | null;
-  /**
-   * A route to pick out even though the pointer is elsewhere — set while a comparison card
-   * is hovered, so the card and the line it describes light up together.
-   */
   highlightedRoute?: number | null;
 }
 
@@ -58,7 +46,7 @@ function lineFeature(route: PlannedRoute) {
   };
 }
 
-/** Bounding box of every point the map needs to show, as MapLibre wants it. */
+// Bounding box in MapLibre's [[w, s], [e, n]] order.
 function boundsOf(coordinates: [number, number][]): [[number, number], [number, number]] | null {
   if (coordinates.length === 0) return null;
   let [west, south] = coordinates[0]!;
@@ -88,8 +76,7 @@ export function TripMap({
   const [openStop, setOpenStop] = useState<Stop | null>(null);
   const [pointerRoute, setPointerRoute] = useState<number | null>(null);
 
-  // The pointer wins when it is actually over a line, so hovering the map never fights a
-  // card the mouse has already left.
+  // Pointer wins over the card hover when it is actually on a line.
   const hoveredRoute = pointerRoute ?? highlightedRoute;
 
   const selected = routes[selectedIndex] ?? routes[0];
@@ -107,8 +94,7 @@ export function TripMap({
     [alternatives],
   );
 
-  // Refit whenever the chosen route changes, so switching alternatives always frames the
-  // whole trip rather than leaving the viewer somewhere in the middle of it.
+  // Refit on route change so switching alternatives always frames the whole trip.
   const fitToRoute = useCallback(() => {
     const map = mapRef.current;
     if (!map || !selected) return;
@@ -148,8 +134,8 @@ export function TripMap({
         <NavigationControl position="top-right" showCompass={false} />
         <ScaleControl position="bottom-left" unit="imperial" />
 
-        {/* Alternatives sit behind the chosen route, dimmed. A wide transparent hit line
-            rides on top of each so they can be clicked without demanding pixel accuracy. */}
+        {/* A wide transparent hit line rides on each alternative so it can be clicked
+            without pixel accuracy. */}
         <Source id="alternatives" type="geojson" data={alternativeCollection}>
           <Layer {...alternativeLine(hoveredRoute)} />
         </Source>
@@ -188,12 +174,8 @@ export function TripMap({
               setOpenStop(stop);
             }}
           >
-            {/* Stops arrive in order along the route rather than all at once. `stops` is
-                already ordered by distance from the origin, so the stagger reads as the
-                trip being driven — the one thing a static row of pins cannot say. The
-                delay is capped so a five-day trip with a dozen stops still settles
-                quickly, and the whole thing is CSS, so the global reduced-motion rule
-                already switches it off. */}
+            {/* `stops` is ordered by distance from origin, so index gives the stagger.
+                Capped at 900ms so a dozen stops still settle quickly. */}
             <span
               className="stop-pin-enter block"
               style={{ animationDelay: `${Math.min(index * 50, 900)}ms` }}
@@ -204,8 +186,6 @@ export function TripMap({
         ))}
 
         {vehiclePosition && (
-          // Drawn above the stop pins and larger than them: this is the one marker that
-          // moves, and it has to stay findable while the scrubber runs.
           <Marker longitude={vehiclePosition[0]} latitude={vehiclePosition[1]} anchor="center" style={{ zIndex: 10 }}>
             <span className="relative flex size-8 items-center justify-center">
               <span className="absolute inset-0 animate-ping rounded-full bg-status-driving/30" aria-hidden />
@@ -249,7 +229,6 @@ const routeLine = {
   paint: { "line-color": ROUTE_GREEN, "line-width": 4 },
 } satisfies LayerProps;
 
-/** Dimmed alternatives, with the hovered one promoted toward the foreground. */
 function alternativeLine(hoveredIndex: number | null): LayerProps {
   return {
     id: "alternative-lines",

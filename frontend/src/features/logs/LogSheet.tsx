@@ -29,7 +29,7 @@ import {
 interface LogSheetProps {
   log: DailyLog;
   details: CarrierDetails;
-  /** Minutes past this sheet's midnight, when the scrubber is on this day. */
+  /** Minutes past this sheet's midnight; null when the scrubber is on another day. */
   playheadMinute?: number | null;
   onSelectMinute?: (minuteOfDay: number) => void;
   className?: string;
@@ -37,16 +37,6 @@ interface LogSheetProps {
 
 const CYCLE_LIMIT_MINUTES = 70 * 60;
 
-/**
- * One FMCSA Driver's Daily Log, drawn as SVG from `geometry.ts`.
- *
- * SVG rather than a server-rendered raster: it stays crisp at any zoom and on paper, the
- * duty line is hit-testable so a segment can be hovered and clicked back into the
- * scrubber, and the geometry can be asserted on in tests instead of eyeballed.
- *
- * Colours come from CSS variables scoped to `.log-sheet` so the print stylesheet can swap
- * the whole sheet to paper ink in one place without this component knowing about print.
- */
 export const LogSheet = forwardRef<SVGSVGElement, LogSheetProps>(function LogSheet(
   { log, details, playheadMinute, onSelectMinute, className },
   ref,
@@ -83,9 +73,8 @@ export const LogSheet = forwardRef<SVGSVGElement, LogSheetProps>(function LogShe
         pointerEvents="none"
       />
 
-      {/* Drawn over the black line rather than instead of it: the line is what the
-          regulation asks for, the colour is what makes the sheet readable at a glance
-          alongside the map and the timeline, which use the same four hues. */}
+      {/* Colour drawn over the black line, not instead of it: the regulation asks for the
+          line, the hue matches the map and timeline. */}
       {log.entries.map((entry) => (
         <line
           key={`ink-${entry.startMinute}-${entry.status}`}
@@ -185,9 +174,8 @@ function SheetHeader({ log, details }: { log: DailyLog; details: CarrierDetails 
       <FieldLine x={HEADER.fromTo.fromX} y={HEADER.fromTo.lineY} endX={HEADER.fromTo.fromLineEnd} label="From:" />
       <FieldLine x={HEADER.fromTo.toX} y={HEADER.fromTo.lineY} endX={HEADER.fromTo.toLineEnd} label="To:" />
 
-      {/* The two mileage boxes carry the same figure here, and that is correct rather than
-          a duplication: they differ on a real sheet only when the truck moves off duty
-          under personal conveyance, which this planner never schedules. */}
+      {/* Same figure in both boxes: they differ only under personal conveyance, which this
+          planner never schedules. */}
       <BoxedField box={HEADER.milesDriving} caption="Total Miles Driving Today" value={formatMiles(log.drivingMiles)} />
       <BoxedField box={HEADER.totalMileage} caption="Total Mileage Today" value={formatMiles(log.drivingMiles)} />
       <BoxedField
@@ -266,7 +254,6 @@ function DutyGrid({ log }: { log: DailyLog }) {
 
   return (
     <g>
-      {/* Hour label band, reversed out like the printed form's black strip. */}
       <rect
         x={GRID.left}
         y={GRID.headerTop}
@@ -351,7 +338,7 @@ function DutyGrid({ log }: { log: DailyLog }) {
         );
       })}
 
-      {/* The sum of the four totals, which must read 24.00 on every sheet. */}
+      {/* Must read 24.00 on every sheet. */}
       <text
         x={(GRID.right + GRID.totalsRight) / 2}
         y={GRID_BOTTOM + 16}
@@ -400,19 +387,11 @@ function EntryHitAreas({
   );
 }
 
-/** Minimum horizontal gap between two remark labels before they start colliding. */
+// Minimum horizontal gap before two rotated remark labels collide.
 const REMARK_MIN_GAP = 13;
 
-/**
- * Which duty changes get named in the remarks band.
- *
- * A cross-country day changes duty a dozen times, and several of those happen in the same
- * town — a fuel stop and the break it satisfies are minutes and a mile apart. Naming every
- * one produces a stack of rotated labels on top of each other, so consecutive repeats of a
- * place are dropped and anything landing within a label's width of the previous remark is
- * skipped. The grid still shows the change; the remark just does not restate a place the
- * sheet already names.
- */
+// Drop consecutive repeats of a place, and anything landing within a label's width of
+// the previous remark, so rotated labels do not stack on top of each other.
 function selectRemarks(entries: readonly LogEntry[]): LogEntry[] {
   const chosen: LogEntry[] = [];
   let lastLocation = "";
@@ -453,8 +432,6 @@ function Remarks({ entries }: { entries: LogEntry[] }) {
         return (
           <g key={`remark-${entry.startMinute}-${entry.ruleId}`}>
             <line x1={x} y1={GRID_BOTTOM} x2={x} y2={REMARKS.y + 8} stroke="var(--sheet-rule)" strokeWidth={0.5} />
-            {/* Rotated because a multi-day trip changes duty often enough that horizontal
-                city names would overlap within a couple of hours of each other. */}
             <text
               x={x}
               y={REMARKS.y + 26}
@@ -590,12 +567,8 @@ function Recap({ log }: { log: DailyLog }) {
   );
 }
 
-/**
- * SVG has no text wrapping, and `foreignObject` does not survive serialisation to a
- * standalone file reliably enough to use on the print and PDF path. So the recap captions
- * are wrapped here by character count, which is stable because these strings are fixed
- * form text rather than user input.
- */
+// SVG has no text wrapping and foreignObject does not serialise reliably for print, so
+// wrap by character count. Stable because these are fixed form strings, not user input.
 function WrappedCaption({ x, y, width, text }: { x: number; y: number; width: number; text: string }) {
   const charsPerLine = Math.max(Math.floor(width / 4.4), 8);
   const lines: string[] = [];

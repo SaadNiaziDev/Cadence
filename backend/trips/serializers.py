@@ -10,13 +10,9 @@ CYCLE_LIMIT_HOURS = CYCLE_LIMIT_MINUTES / MINUTES_PER_HOUR
 class HomeTerminalDateTimeField(serializers.DateTimeField):
     """Reads the wall-clock time the driver chose, ignoring any timezone offset.
 
-    Log sheets are kept in a single home-terminal local time for the whole trip, as
-    395.8(d) prescribes, and the engine slices days at midnight in that same frame.
-
-    The default field would convert an offset-bearing timestamp to UTC and hand back a
-    naive datetime, so a driver in Karachi asking to leave at 08:00 would be planned as
-    leaving at 03:00 — every midnight boundary, and therefore every log sheet, shifted by
-    five hours. Keeping the wall clock and discarding the offset is what the driver meant.
+    Log sheets are kept in one home-terminal local time for the whole trip (395.8(d)) and
+    the engine slices days at midnight in that frame. The default field would convert an
+    offset-bearing timestamp to UTC, shifting which day each segment lands on.
     """
 
     def to_internal_value(self, value):

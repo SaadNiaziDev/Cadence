@@ -24,9 +24,7 @@ import { formatDateTime, formatDuration, formatMiles } from "@/lib/hos";
 import { coordinateAtMiles, positionAt, tripStartMinute } from "@/lib/trip-position";
 import type { PlannedRoute, RuleId, Trip, TripRequest } from "@/types/hos";
 
-// MapLibre is by far the heaviest dependency here — about 270 kB gzipped — and nothing
-// needs it until a trip has actually been planned, so it is fetched only once there is a
-// route to draw. That keeps the form itself on a much smaller entry chunk.
+// ~270 kB gzipped, and unused until a route exists, so it stays off the entry chunk.
 const TripMap = lazy(() => import("@/features/map/TripMap").then((module) => ({ default: module.TripMap })));
 
 export default function App() {
@@ -44,9 +42,7 @@ export default function App() {
   const plan = usePlanTrip();
   const shared = useTrip(tripId);
 
-  // A trip arriving from the URL adopts the ranking the planner chose, exactly as a
-  // freshly planned one does. Without this a shared link would always open on route A
-  // even when the sender had picked another.
+  // Adopt the planner's ranking, or a shared link always opens on route A.
   useEffect(() => {
     if (!shared.data) return;
     setTrip(shared.data);
@@ -57,8 +53,7 @@ export default function App() {
   const route: PlannedRoute | null = trip?.routes[selectedRoute] ?? trip?.routes[0] ?? null;
   const tripRequest = useMemo(() => requestFor(trip), [trip]);
 
-  // Switching to another route rewinds, because the same minute means something
-  // different on a schedule with a different set of stops.
+  // Rewind on route change: the same minute maps to a different schedule.
   useEffect(() => {
     if (route) setMinute(tripStartMinute(route));
   }, [route]);
@@ -70,24 +65,20 @@ export default function App() {
     return coordinateAtMiles(route.geometry, route.distanceMiles, position.milesFromOrigin);
   }, [route, position]);
 
-  // Which clock forces the next stop, so its gauge can be picked out while the driver is
-  // still approaching it.
+  // The clock that forces the next stop: the first non-driving segment ahead of us.
   const bindingRuleId = useMemo<RuleId | null>(() => {
     if (!route || !position) return null;
     const upcoming = route.segments.slice(position.segmentIndex + 1).find((segment) => segment.status !== "D");
     return upcoming?.ruleId ?? null;
   }, [route, position]);
 
-  /** Show a freshly planned trip and put it at its own URL. */
   function adoptTrip(result: Trip) {
     setTrip(result);
     setSelectedRoute(result.selectedIndex);
     setIsPlaying(false);
 
     if (result.id) {
-      // Seed the cache under the key the shared-trip query will look for, so putting the
-      // id in the URL does not send us straight back to the server for a payload we are
-      // already holding.
+      // Seed the cache so navigating to the id does not refetch what we already hold.
       queryClient.setQueryData(["trip", result.id], result);
       navigate(`/trip/${result.id}`);
     }
@@ -98,14 +89,7 @@ export default function App() {
   }
 
   return (
-    // A fixed-height shell rather than a growing document: the map is the primary
-    // surface, so it claims whatever height is left instead of being pushed below the
-    // fold by the panels above it. Each column scrolls on its own.
     <div className="app-shell flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      {/* Identity and account actions only. The trip figures used to live up here, which
-          put five 10px read-once numbers in the most prominent strip on the screen while
-          the four legal clocks — the thing a driver actually reads — sat below them at
-          half the size. They now sit on the tab row, at the altitude they deserve. */}
       <header className="shrink-0 border-b">
         <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-2.5 sm:px-6">
           <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -141,10 +125,8 @@ export default function App() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-4">
-              {/* Keyed on the trip so a shared link opens with the locations that were
-                  actually planned, rather than an empty form contradicting the header
-                  above it. Remounting is what applies the defaults, so a trip loaded
-                  mid-edit can never overwrite what someone is typing. */}
+              {/* Keyed on the trip: remounting is what applies the defaults, so a trip
+                  loading mid-edit cannot overwrite what someone is typing. */}
               <TripForm
                 key={trip?.id ?? "new"}
                 onSubmit={handleSubmit}
@@ -199,9 +181,6 @@ export default function App() {
               />
 
               <Tabs defaultValue="map" className="flex min-h-0 flex-1 flex-col">
-                {/* Tabs and the read-once trip figures share one row: the figures are
-                    reference material, and this is the only strip on the screen with
-                    horizontal room to spare once the clocks are the right size. */}
                 <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2">
                   <TabsList>
                     <TabsTrigger value="map">Map</TabsTrigger>
@@ -272,15 +251,6 @@ function PlanningSkeleton() {
   );
 }
 
-/**
- * Arrival, distance and sheet count, as one inline sentence rather than a row of labelled
- * columns.
- *
- * Five stacked label/value pairs read as a dashboard and competed with the clocks for
- * attention. These are figures a dispatcher reads once when the plan lands, so they are set
- * as running text at a size that is still legible — 13px, not the 10px they were — and
- * arrival is the only one weighted, because it is the only one anybody quotes.
- */
 function TripSummaryStats({ route }: { route: PlannedRoute }) {
   return (
     <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
@@ -301,15 +271,8 @@ function TripSummaryStats({ route }: { route: PlannedRoute }) {
   );
 }
 
-/**
- * The request that would reproduce a trip.
- *
- * The payload does not carry the request that produced it, but everything needed is
- * recoverable: the waypoint labels are the three locations, and the cycle hours a driver
- * entered are the cycle clock's reading before the first minute of the trip. That makes a
- * shared link a fully working starting point — it can be re-planned and varied, not only
- * read.
- */
+// Rebuild the request from a trip: the waypoint labels are the three locations, and the
+// cycle hours entered are the cycle clock's reading before the trip's first minute.
 function requestFor(trip: Trip | null): TripRequest | null {
   if (!trip) return null;
 
@@ -350,12 +313,6 @@ function formDefaultsFor(trip: Trip | null) {
   };
 }
 
-/**
- * Copies the current URL, which is the trip's permanent address once it has been planned.
- *
- * The plan is persisted server-side rather than encoded into the link, so the URL stays
- * short enough to paste into a message and does not go stale if the payload shape changes.
- */
 function ShareLinkButton() {
   const [copied, setCopied] = useState(false);
 
@@ -365,8 +322,7 @@ function ShareLinkButton() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard access is refused on insecure origins and in some embedded browsers.
-      // The URL is in the address bar either way, so there is nothing to recover from.
+      // Refused on insecure origins; the URL is in the address bar either way.
     }
   }
 

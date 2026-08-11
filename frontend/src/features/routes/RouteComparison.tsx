@@ -15,15 +15,9 @@ interface RouteComparisonProps {
 
 const ROUTE_NAMES = ["Route A", "Route B", "Route C", "Route D"];
 
-/**
- * Alternatives ranked by what they cost a driver, not by distance.
- *
- * Hours of Service is quantised: a route sixty miles longer can arrive a full day earlier
- * because it lets the driver finish a leg before the 14-hour window shuts instead of
- * parking for ten hours. Neither distance nor raw drive time can show that, which is why
- * the winning line here is the arrival datetime and the restart count rather than the
- * mileage — and why the badge names the saving in the units a driver actually feels.
- */
+// HOS is quantised: a route 60 miles longer can arrive a day earlier by letting a leg
+// finish before the 14-hour window shuts. Ranked on arrival, then restarts, then rests,
+// then cycle burned - never on distance.
 export function RouteComparison({ routes, selectedIndex, onSelect, onHover }: RouteComparisonProps) {
   // Nothing at all when there is no comparison to make. The planner already emits a
   // warning saying only one sensible route exists, and a card restating that in the
@@ -131,12 +125,8 @@ function RouteCard({
   );
 }
 
-/**
- * What the winning route buys over the best of the rest, phrased in the unit that differs
- * most. Whole days first, because that is the difference a dispatcher acts on; then a
- * saved restart; then cycle hours. If nothing separates them, say nothing rather than
- * manufacture a distinction out of a rounding difference.
- */
+// Report the largest differing unit: whole days, then saved restarts, then cycle hours.
+// Below the thresholds here the routes are equivalent, so say nothing.
 function advantageOver(winner: PlannedRoute, routes: PlannedRoute[]): string | null {
   const rivals = routes.filter((route) => route.index !== winner.index);
   if (rivals.length === 0) return null;

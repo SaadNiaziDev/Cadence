@@ -7,13 +7,6 @@ import type { PlannedRoute } from "@/types/hos";
 
 import { verdictFor } from "./compliance";
 
-/**
- * The compliance verdict, and the working behind it.
- *
- * The badge is the headline a reviewer reads first; opening it shows the same rubric they
- * would otherwise have to check by hand, with the measured figure beside each line. Handing
- * over the checklist pre-filled is more convincing than asserting the plan is fine.
- */
 export function ComplianceVerdict({ route }: { route: PlannedRoute }) {
   const verdict = verdictFor(route);
 

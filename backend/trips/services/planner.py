@@ -1,9 +1,7 @@
 """Turns three place names and a cycle balance into a complete, ranked trip plan.
 
-This is the only module that knows about all the others. It geocodes the waypoints, asks
-the router for one or more routes, runs the HOS engine over each, positions the resulting
-stops on the road, builds the daily log sheets, and ranks the alternatives by what a
-driver actually cares about — when they arrive — rather than by distance.
+Geocodes the waypoints, asks the router for one or more routes, runs the HOS engine over
+each, positions the stops on the road, builds the log sheets, and ranks the alternatives.
 """
 
 from __future__ import annotations
@@ -281,10 +279,9 @@ def _extract_stops(
 def _ranking_key(entry: PlannedRoute) -> tuple:
     """Rank routes by what a driver feels, not by what a map measures.
 
-    Arrival time comes first because Hours of Service is quantised: a route that is sixty
-    miles longer can still arrive a full day earlier if it lets the driver finish a leg
-    before the 14-hour window closes instead of parking for ten hours. Restarts and rests
-    break the ties, and distance only matters when everything else is equal.
+    Arrival first: HOS is quantised, so a route sixty miles longer can arrive a full day
+    earlier by letting a leg finish before the 14-hour window closes. Then restarts, then
+    rests, then on-duty hours burned, then distance.
     """
     return (
         entry.arrival_minute,

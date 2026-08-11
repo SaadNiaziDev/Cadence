@@ -1,12 +1,5 @@
-/**
- * The plan's own compliance checks, re-derived in the browser from the payload.
- *
- * These deliberately do not ask the engine whether it thinks it was correct. Each one is
- * computed here from the segments, sheets and stops the engine emitted, so a green tick
- * means the delivered data actually satisfies the rule rather than that the planner
- * believed it did. That is the difference between a claim and a check, and it is the
- * distinction a reviewer is looking for.
- */
+// Each check is recomputed from the segments, sheets and stops the engine emitted rather
+// than read from any verdict the engine reported.
 
 import { MINUTES_PER_HOUR, formatMiles } from "@/lib/hos";
 import type { PlannedRoute } from "@/types/hos";
@@ -42,13 +35,8 @@ export function verdictFor(route: PlannedRoute): Verdict {
   };
 }
 
-/**
- * No driving segment may end with any clock past its limit.
- *
- * Checked against `clocksAfter` on driving segments only, because the regulation forbids
- * *driving* past a limit — working past the 14-hour window is legal, and flagging it would
- * be wrong.
- */
+// Driving segments only: the regulation forbids driving past a limit, not working past
+// one. Working beyond the 14-hour window is legal and must not be flagged.
 function clocksCheck(route: PlannedRoute): Check {
   const breaches = route.segments.filter(
     (segment) =>
