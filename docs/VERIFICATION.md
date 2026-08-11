@@ -174,6 +174,8 @@ If anything here fails, stop — the manual cases below assume a green suite.
 
 **Why it matters:** the output is a legal document. It has to survive contact with a printer.
 
+> The screen layout is a 100vh flex frame with `overflow: hidden` panes. The print copy is therefore rendered through a React portal to `<body>`, outside that frame, and the print stylesheet hides the app shell wholesale rather than hiding each control in turn. Printed from inside the frame, all N sheets clip to a single page.
+
 ---
 
 ## 11. Themes and readability

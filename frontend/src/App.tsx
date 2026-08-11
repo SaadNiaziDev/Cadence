@@ -101,7 +101,7 @@ export default function App() {
     // A fixed-height shell rather than a growing document: the map is the primary
     // surface, so it claims whatever height is left instead of being pushed below the
     // fold by the panels above it. Each column scrolls on its own.
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div className="app-shell flex h-screen flex-col overflow-hidden bg-background text-foreground">
       {/* Identity and account actions only. The trip figures used to live up here, which
           put five 10px read-once numbers in the most prominent strip on the screen while
           the four legal clocks — the thing a driver actually reads — sat below them at

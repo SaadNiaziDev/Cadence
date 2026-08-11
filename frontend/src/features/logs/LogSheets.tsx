@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CircleAlert, CircleCheck, Printer, SlidersHorizontal } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -99,14 +100,23 @@ export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
         />
       </div>
 
-      {/* Paper gets the whole set, one sheet per page. The screen never shows this copy. */}
-      <div className="print-only">
-        {logs.map((sheet) => (
-          <div key={`print-${sheet.date}`} className="print-sheet">
-            <LogSheet log={sheet} details={details} />
-          </div>
-        ))}
-      </div>
+      {/* Paper gets the whole set, one sheet per page. The screen never shows this copy.
+
+          Portalled to <body> rather than rendered here, because everything above it in the
+          tree is part of a 100vh flex shell: `main` is `overflow: hidden` and the tab panel
+          resolves to a few hundred pixels tall. Left in place, the sheets print clipped to
+          a single page inside that box. At body level they have the whole page to
+          themselves, and the print stylesheet hides the app shell around them. */}
+      {createPortal(
+        <div className="print-only">
+          {logs.map((sheet) => (
+            <div key={`print-${sheet.date}`} className="print-sheet">
+              <LogSheet log={sheet} details={details} />
+            </div>
+          ))}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

@@ -245,9 +245,22 @@
     margin: 12mm;
   }
 
+  /* The screen layout is a 100vh flex frame with its own scrolling panes. Left alone on
+     paper it clips everything to the first page, so the frame is dropped entirely and the
+     page grows to fit the sheets instead. */
+  html,
   body {
+    height: auto !important;
+    overflow: visible !important;
     background: #fff;
     color: #000;
+  }
+
+  /* Hide the whole application rather than each piece of chrome in turn: the sheets are
+     portalled out to <body>, so nothing inside the shell needs to print and any control
+     added later is excluded automatically. */
+  .app-shell {
+    display: none !important;
   }
 
   .print-hidden {
