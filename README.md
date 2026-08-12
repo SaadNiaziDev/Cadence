@@ -10,6 +10,8 @@ Give it four things — where the truck is, where the load is collected, where i
 | **Live app**    | *add the Vercel URL* |
 | **Walkthrough** | *add the Loom URL*   |
 
+Every accuracy claim below can be checked by hand — [`docs/VERIFICATION.md`](docs/VERIFICATION.md) lists the cases, what to expect, and why each one matters.
+
 
 ---
 
