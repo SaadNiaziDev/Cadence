@@ -13,6 +13,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://cadence-api-production-b42d.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/trip/:path*",
+      "destination": "/index.html"
     }
   ]
 }
