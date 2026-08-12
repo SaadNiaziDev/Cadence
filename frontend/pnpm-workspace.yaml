@@ -1,0 +1,4 @@
+# pnpm 11 refuses to run a dependency's build scripts unless it is approved here, and
+# fails the install rather than warning. esbuild is Vite's bundler.
+allowBuilds:
+  esbuild: true
