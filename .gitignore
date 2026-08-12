@@ -29,3 +29,7 @@ dist/
 
 # Deploy
 .vercel
+
+# Working notes and source material
+PLAN.md
+resources/

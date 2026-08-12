@@ -1,6 +1,5 @@
-// Coordinates for the FMCSA Driver's Daily Log sheet, traced from
-// `resources/blank-paper-log.png`. All values are SVG user-space units against
-// SHEET.width / SHEET.height; the viewBox does the scaling.
+// Coordinates traced from the blank FMCSA Driver's Daily Log sheet. All values are SVG
+// user-space units against SHEET.width / SHEET.height; the viewBox does the scaling.
 
 import type { DutyStatus } from "@/types/hos";
 
