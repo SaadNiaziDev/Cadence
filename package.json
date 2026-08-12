@@ -17,7 +17,7 @@
     "build": "pnpm --dir frontend build",
     "start": "concurrently --names api,web --prefix-colors magenta.bold,cyan.bold \"pnpm run start:api\" \"pnpm run start:web\"",
     "start:api": "cd backend && .venv/bin/python -m gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120",
-    "start:web": "pnpm --dir frontend preview --port 5173",
+    "start:web": "pnpm --dir frontend preview --port 3000",
     "test": "cd backend && .venv/bin/python manage.py test trips --verbosity 2",
     "lint": "pnpm --dir frontend lint"
   },

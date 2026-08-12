@@ -4,10 +4,12 @@ Plan a truck trip that obeys FMCSA Hours of Service rules (49 CFR Part 395), and
 
 Give it four things — where the truck is, where the load is collected, where it's delivered, and how many of the 70 cycle hours are already used — and it returns the route with every legally required stop on it, plus a filled-in log sheet for each day.
 
-| | |
-|---|---|
-| **Live app** | _add the Vercel URL_ |
-| **Walkthrough** | _add the Loom URL_ |
+
+|                 |                      |
+| --------------- | -------------------- |
+| **Live app**    | *add the Vercel URL* |
+| **Walkthrough** | *add the Loom URL*   |
+
 
 ---
 
@@ -26,6 +28,8 @@ Give it four things — where the truck is, where the load is collected, where i
 
 ---
 
+
+
 ## Running locally
 
 Needs Python 3.13 and Node 20+ with pnpm.
@@ -33,21 +37,25 @@ Needs Python 3.13 and Node 20+ with pnpm.
 ```bash
 pnpm install     # root tooling
 pnpm setup       # backend venv, both dependency sets, migrations
-pnpm dev         # Django on :8000 and Vite on :5173
+pnpm dev         # Django on :8000 and the web app on :3000
 ```
 
-Open http://localhost:5173.
+Open [http://localhost:3000](http://localhost:3000).
 
-| Script | Does |
-|---|---|
-| `pnpm dev` | Runs the API and web dev servers together |
-| `pnpm build` | Builds the frontend into `frontend/dist` |
-| `pnpm test` | Backend test suite (147 tests) |
-| `pnpm lint` | Frontend lint |
+
+| Script       | Does                                      |
+| ------------ | ----------------------------------------- |
+| `pnpm dev`   | Runs the API and web dev servers together |
+| `pnpm build` | Builds the frontend into `frontend/dist`  |
+| `pnpm test`  | Backend test suite (147 tests)            |
+| `pnpm lint`  | Frontend lint                             |
+
 
 Set `UPSTREAM_USER_AGENT` in `backend/.env` to a real contact address — Nominatim's usage policy requires it. Copy `backend/.env.example` to start.
 
 ---
+
+
 
 ## Stack
 
@@ -62,9 +70,11 @@ The HOS simulation in `backend/trips/services/hos_engine.py` is a pure function 
 
 ---
 
+
+
 ## Deploying
 
-**Frontend → Vercel.** `vercel.json` has the build settings and proxies `/api/*` to the backend, so the browser only ever talks to the Vercel origin.
+**Frontend → Vercel.** `vercel.json` has the build settings and proxies `/api/`* to the backend, so the browser only ever talks to the Vercel origin.
 
 **Backend → Railway.** `backend/railway.json` pins the build, the migration step and the start command.
 
@@ -76,6 +86,8 @@ vercel --prod
 Backend environment: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=false`, `UPSTREAM_USER_AGENT`, and `DATABASE_URL` pointing at Postgres.
 
 ---
+
+
 
 ## Known simplifications
 
