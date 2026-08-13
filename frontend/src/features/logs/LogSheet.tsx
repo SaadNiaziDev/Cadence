@@ -171,8 +171,20 @@ function SheetHeader({ log, details }: { log: DailyLog; details: CarrierDetails 
         Duplicate — Driver retains in his/her possession for 8 days.
       </text>
 
-      <FieldLine x={HEADER.fromTo.fromX} y={HEADER.fromTo.lineY} endX={HEADER.fromTo.fromLineEnd} label="From:" />
-      <FieldLine x={HEADER.fromTo.toX} y={HEADER.fromTo.lineY} endX={HEADER.fromTo.toLineEnd} label="To:" />
+      <FieldLine
+        x={HEADER.fromTo.fromX}
+        y={HEADER.fromTo.lineY}
+        endX={HEADER.fromTo.fromLineEnd}
+        label="From:"
+        value={details.from}
+      />
+      <FieldLine
+        x={HEADER.fromTo.toX}
+        y={HEADER.fromTo.lineY}
+        endX={HEADER.fromTo.toLineEnd}
+        label="To:"
+        value={details.to}
+      />
 
       {/* Same figure in both boxes: they differ only under personal conveyance, which this
           planner never schedules. */}
@@ -195,13 +207,30 @@ function SheetHeader({ log, details }: { log: DailyLog; details: CarrierDetails 
   );
 }
 
-function FieldLine({ x, y, endX, label }: { x: number; y: number; endX: number; label: string }) {
+function FieldLine({
+  x,
+  y,
+  endX,
+  label,
+  value,
+}: {
+  x: number;
+  y: number;
+  endX: number;
+  label: string;
+  value: string;
+}) {
   return (
     <g>
       <text x={x} y={y - 4} className="sheet-label" fill="var(--sheet-ink)">
         {label}
       </text>
       <line x1={x + 46} y1={y} x2={endX} y2={y} stroke="var(--sheet-ink)" />
+      {value ? (
+        <text x={x + 52} y={y - 4} className="sheet-value" fill="var(--sheet-ink)">
+          {value}
+        </text>
+      ) : null}
     </g>
   );
 }

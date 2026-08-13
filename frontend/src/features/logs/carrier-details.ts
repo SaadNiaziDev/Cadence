@@ -1,9 +1,11 @@
-// Driver-entered boxes, not derivable from the trip. Kept in local storage so they
-// survive re-planning.
+// Carrier boxes are kept in local storage so they survive re-planning. From and To
+// default from the trip and are not persisted, so a new plan does not keep the last one.
 
 import { useCallback, useEffect, useState } from "react";
 
 export interface CarrierDetails {
+  from: string;
+  to: string;
   carrier: string;
   officeAddress: string;
   terminalAddress: string;
@@ -14,6 +16,8 @@ export interface CarrierDetails {
 }
 
 export const EMPTY_CARRIER_DETAILS: CarrierDetails = {
+  from: "",
+  to: "",
   carrier: "",
   officeAddress: "",
   terminalAddress: "",
@@ -24,6 +28,8 @@ export const EMPTY_CARRIER_DETAILS: CarrierDetails = {
 };
 
 export const CARRIER_FIELDS: Array<{ key: keyof CarrierDetails; label: string; placeholder: string }> = [
+  { key: "from", label: "From", placeholder: "Chicago, IL" },
+  { key: "to", label: "To", placeholder: "Atlanta, GA" },
   { key: "carrier", label: "Name of carrier", placeholder: "Bluebird Freight LLC" },
   { key: "officeAddress", label: "Main office address", placeholder: "1400 W Belt Line Rd, Dallas, TX" },
   { key: "terminalAddress", label: "Home terminal address", placeholder: "2200 Industrial Blvd, Dallas, TX" },
@@ -59,7 +65,16 @@ export function useCarrierDetails(): [CarrierDetails, (key: keyof CarrierDetails
     setDetails((previous) => {
       const next = { ...previous, [key]: value };
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        const persisted: Omit<CarrierDetails, "from" | "to"> = {
+          carrier: next.carrier,
+          officeAddress: next.officeAddress,
+          terminalAddress: next.terminalAddress,
+          vehicles: next.vehicles,
+          shippingDocuments: next.shippingDocuments,
+          manifestNumber: next.manifestNumber,
+          shipperCommodity: next.shipperCommodity,
+        };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
       } catch {
         // Private-mode browsers refuse storage; typing must still work.
       }

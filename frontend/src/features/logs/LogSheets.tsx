@@ -26,11 +26,18 @@ interface LogSheetsProps {
   /** Trip minute, counted from midnight of day one. */
   minute: number;
   onSelectMinute: (minute: number) => void;
+  origin: string;
+  destination: string;
 }
 
-export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
+export function LogSheets({ route, minute, onSelectMinute, origin, destination }: LogSheetsProps) {
   const logs = route.logs;
   const [details, updateDetail] = useCarrierDetails();
+  const sheetDetails = {
+    ...details,
+    from: details.from.trim() || origin,
+    to: details.to.trim() || destination,
+  };
 
   const cursorDay = Math.max(0, Math.min(Math.floor(minute / MINUTES_PER_DAY), logs.length - 1));
   const [selectedDay, setSelectedDay] = useState(cursorDay);
@@ -69,7 +76,7 @@ export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
         <TotalsBadge log={log} />
 
         <div className="ml-auto flex items-center gap-2">
-          <CarrierDetailsDialog details={details} onChange={updateDetail} />
+          <CarrierDetailsDialog details={sheetDetails} onChange={updateDetail} origin={origin} destination={destination} />
           <Button type="button" variant="outline" size="sm" onClick={() => window.print()}>
             <Printer />
             Print all {logs.length}
@@ -87,7 +94,7 @@ export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
       <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-3 print-hidden">
         <LogSheet
           log={log}
-          details={details}
+          details={sheetDetails}
           playheadMinute={day === cursorDay ? minute % MINUTES_PER_DAY : null}
           onSelectMinute={(minuteOfDay) => onSelectMinute(day * MINUTES_PER_DAY + minuteOfDay)}
         />
@@ -99,7 +106,7 @@ export function LogSheets({ route, minute, onSelectMinute }: LogSheetsProps) {
         <div className="print-only">
           {logs.map((sheet) => (
             <div key={`print-${sheet.date}`} className="print-sheet">
-              <LogSheet log={sheet} details={details} />
+              <LogSheet log={sheet} details={sheetDetails} />
             </div>
           ))}
         </div>,
@@ -128,9 +135,13 @@ function TotalsBadge({ log }: { log: DailyLog }) {
 function CarrierDetailsDialog({
   details,
   onChange,
+  origin,
+  destination,
 }: {
   details: ReturnType<typeof useCarrierDetails>[0];
   onChange: ReturnType<typeof useCarrierDetails>[1];
+  origin: string;
+  destination: string;
 }) {
   return (
     <Dialog>
@@ -144,8 +155,7 @@ function CarrierDetailsDialog({
         <DialogHeader>
           <DialogTitle>Sheet details</DialogTitle>
           <DialogDescription>
-            The boxes a driver fills in by hand. Nothing here is derivable from the trip, so it is kept on this device
-            and reused across plans.
+            From and To default to this trip. The rest is what a driver fills in by hand and is kept on this device.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,7 +166,9 @@ function CarrierDetailsDialog({
               <Input
                 id={`carrier-${field.key}`}
                 value={details[field.key]}
-                placeholder={field.placeholder}
+                placeholder={
+                  field.key === "from" ? origin || field.placeholder : field.key === "to" ? destination || field.placeholder : field.placeholder
+                }
                 onChange={(event) => onChange(field.key, event.target.value)}
               />
             </Field>

@@ -225,6 +225,8 @@ export default function App() {
                   <LogSheets
                     route={route}
                     minute={minute}
+                    origin={trip.waypoints[0]?.label ?? ""}
+                    destination={trip.waypoints[trip.waypoints.length - 1]?.label ?? ""}
                     onSelectMinute={(value) => {
                       setIsPlaying(false);
                       setMinute(value);
