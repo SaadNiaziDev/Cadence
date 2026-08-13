@@ -4,10 +4,7 @@ Plan a truck trip that stays inside FMCSA Hours of Service (49 CFR Part 395), an
 
 Four inputs — current location, pickup, dropoff, cycle hours already used — and it returns the route with every legally required stop on it, plus a filled-in log for each calendar day.
 
-[![CI](https://github.com/SaadNiaziDev/Cadence/actions/workflows/ci.yml/badge.svg)](https://github.com/SaadNiaziDev/Cadence/actions/workflows/ci.yml)
-
-> **Live app:** [fmcsa-hos-builder.vercel.app](https://fmcsa-hos-builder.vercel.app/)  
-> **Walkthrough:** _add the Loom URL_
+> **Live app:** [fmcsa-hos-builder.vercel.app](https://fmcsa-hos-builder.vercel.app/)
 
 ![Planner: four clock gauges, trip scrubber, mandatory stops on the map, and routes ranked by what they cost the driver](docs/planner.jpg)
 
@@ -19,12 +16,12 @@ Four inputs — current location, pickup, dropoff, cycle hours already used — 
 
 A property-carrying driver runs four limits at once. Whichever hits first stops the truck.
 
-| Clock | Limit | Resets on |
-| --- | --- | --- |
-| **Driving** | 11 h behind the wheel | 10 consecutive hours off duty |
-| **Window** | no driving after 14 h from the first minute of work — breaks do not pause it | 10 consecutive hours off duty |
-| **Break** | no driving past 8 h of cumulative driving | any 30 consecutive minutes *not* driving |
-| **Cycle** | 70 h on duty in a rolling 8 days | days aging out, or 34 consecutive hours off |
+| Clock       | Limit                                                                        | Resets on                                   |
+| ----------- | ---------------------------------------------------------------------------- | ------------------------------------------- |
+| **Driving** | 11 h behind the wheel                                                        | 10 consecutive hours off duty               |
+| **Window**  | no driving after 14 h from the first minute of work — breaks do not pause it | 10 consecutive hours off duty               |
+| **Break**   | no driving past 8 h of cumulative driving                                    | any 30 consecutive minutes _not_ driving    |
+| **Cycle**   | 70 h on duty in a rolling 8 days                                             | days aging out, or 34 consecutive hours off |
 
 Two things most planners get wrong, and this one does not:
 
@@ -74,11 +71,11 @@ pnpm dev         # API on :8000, app on :3000
 
 Open [http://localhost:3000](http://localhost:3000). Copy `backend/.env.example` to `backend/.env` and set `UPSTREAM_USER_AGENT` to a real contact address — Nominatim requires it.
 
-| Script | Does |
-| --- | --- |
-| `pnpm dev` | API and web together |
-| `pnpm test` | Backend suite (147 tests) |
-| `pnpm lint` | Frontend lint |
+| Script       | Does                      |
+| ------------ | ------------------------- |
+| `pnpm dev`   | API and web together      |
+| `pnpm test`  | Backend suite (147 tests) |
+| `pnpm lint`  | Frontend lint             |
 | `pnpm build` | Frontend production build |
 
 ---
