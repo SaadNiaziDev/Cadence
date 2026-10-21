@@ -110,3 +110,5 @@ These are assignment limits, not forgotten features:
 ---
 
 Map tiles © [OpenFreeMap](https://openfreemap.org) © [OpenMapTiles](https://openmaptiles.org), data from [OpenStreetMap](https://www.openstreetmap.org/copyright). Routing by [OSRM](https://project-osrm.org), geocoding by [Nominatim](https://nominatim.org).
+
+Built by [Saad Ali Khan](https://saadalikhan.dev). Case study: [saadalikhan.dev/work/cadence](https://saadalikhan.dev/work/cadence).
